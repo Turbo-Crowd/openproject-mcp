@@ -90,13 +90,28 @@ describe("expanded OpenProject tools", () => {
     }
   });
 
-  test("creates relations with both work-package links", async () => {
+  test("creates relations through the source HAL route with a target-only payload", async () => {
     let path = "";
     let init: RequestInit | undefined;
     const api = (async (requestedPath: string, requestedInit?: RequestInit) => {
+      if (!requestedInit) {
+        if (requestedPath === "/api/v3/work_packages/2") {
+          return {
+            _type: "WorkPackage",
+            id: 2,
+            _links: { addRelation: { href: "/api/v3/work_packages/2/relations" } },
+          };
+        }
+        if (requestedPath === "/api/v3/work_packages/3") {
+          return { _type: "WorkPackage", id: 3, _links: {} };
+        }
+        if (requestedPath === "/api/v3/work_packages/2/relations") {
+          return { _embedded: { elements: [] } };
+        }
+      }
       path = requestedPath;
       init = requestedInit;
-      return { id: 9, type: "blocks" };
+      return { id: 9, type: "blocks", _links: {} };
     }) as OpenProjectApi;
     const server = makeServer(api);
 
@@ -106,14 +121,11 @@ describe("expanded OpenProject tools", () => {
       type: "blocks",
     });
 
-    expect(path).toBe("/api/v3/relations");
+    expect(path).toBe("/api/v3/work_packages/2/relations");
     expect(init?.method).toBe("POST");
     expect(JSON.parse(String(init?.body))).toEqual({
       type: "blocks",
-      _links: {
-        from: { href: "/api/v3/work_packages/2" },
-        to: { href: "/api/v3/work_packages/3" },
-      },
+      _links: { to: { href: "/api/v3/work_packages/3" } },
     });
   });
 

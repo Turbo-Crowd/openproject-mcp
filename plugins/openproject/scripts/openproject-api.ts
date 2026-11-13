@@ -45,6 +45,28 @@ type FetchLike = (
   init?: RequestInit,
 ) => Promise<Response>;
 
+export class OpenProjectTransportError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly category: "NOT_FOUND" | "PERMISSION_DENIED" | "STALE_LOCK_VERSION" | "TRANSPORT_ERROR",
+  ) {
+    super(
+      category === "NOT_FOUND" ? "OpenProject resource was not found."
+        : category === "PERMISSION_DENIED" ? "OpenProject permission was denied."
+        : category === "STALE_LOCK_VERSION" ? "OpenProject rejected a stale lockVersion; re-read before retrying."
+        : "OpenProject transport request failed.",
+    );
+    this.name = "OpenProjectTransportError";
+  }
+}
+
+function transportError(status: number): OpenProjectTransportError {
+  if (status === 404) return new OpenProjectTransportError(status, "NOT_FOUND");
+  if (status === 403) return new OpenProjectTransportError(status, "PERMISSION_DENIED");
+  if (status === 409) return new OpenProjectTransportError(status, "STALE_LOCK_VERSION");
+  return new OpenProjectTransportError(status, "TRANSPORT_ERROR");
+}
+
 export function createOpenProjectApi(
   baseUrl: string,
   apiToken: string,
@@ -79,16 +101,10 @@ export function createOpenProjectApi(
       signal: init.signal ?? AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) {
-      const text = await response.text();
-      let body: unknown = text;
-      try {
-        body = text ? JSON.parse(text) : {};
-      } catch {
-        // Preserve a non-JSON error response for diagnostics.
-      }
-      throw new Error(
-        `OpenProject HTTP ${response.status}: ${JSON.stringify(body).slice(0, 2000)}`,
-      );
+      // Transport payloads may contain server internals or user data. Surface only
+      // a stable category that callers can safely return through MCP.
+      await response.body?.cancel();
+      throw transportError(response.status);
     }
     return response;
   }
@@ -154,19 +170,15 @@ export function createOpenProjectApi(
   ): Promise<HalResource> => {
     const form = new FormData();
     const fileBytes = Uint8Array.from(bytes);
+    // OpenProject expects metadata as a scalar JSON string, not a file part.
     form.append(
       "metadata",
-      new Blob(
-        [
-          JSON.stringify({
-            fileName,
-            ...(description
-              ? { description: { format: "plain", raw: description } }
-              : {}),
-          }),
-        ],
-        { type: "application/json" },
-      ),
+      JSON.stringify({
+        fileName,
+        ...(description
+          ? { description: { format: "plain", raw: description } }
+          : {}),
+      }),
     );
     form.append(
       "file",

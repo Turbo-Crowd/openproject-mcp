@@ -1,10 +1,10 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.alex13slem/openproject",
-  "title": "OpenProject",
-  "description": "Manage OpenProject projects, work packages, files, relations, boards, users, and notifications.",
+  "name": "io.github.Turbo-Crowd/openproject-mcp",
+  "title": "OpenProject MCP",
+  "description": "General-purpose OpenProject API v3 MCP server with policy-gated writes.",
   "repository": {
-    "url": "https://github.com/alex13slem/openproject-codex-plugin",
+    "url": "https://github.com/Turbo-Crowd/openproject-mcp",
     "source": "github",
     "subfolder": "plugins/openproject"
   },
@@ -13,57 +13,22 @@
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
-      "identifier": "openproject-codex-plugin",
+      "identifier": "@turbo-crowd/openproject-mcp",
       "version": "0.5.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
-        {
-          "name": "OPENPROJECT_URL",
-          "description": "Root URL of the OpenProject instance",
-          "isRequired": true,
-          "isSecret": false,
-          "format": "string"
-        },
-        {
-          "name": "OPENPROJECT_API_TOKEN",
-          "description": "OpenProject API token",
-          "isRequired": true,
-          "isSecret": true,
-          "format": "string"
-        },
-        {
-          "name": "OPENPROJECT_PAGE_SIZE",
-          "description": "Default page size from 1 to 100",
-          "isRequired": false,
-          "isSecret": false,
-          "format": "string",
-          "default": "25"
-        },
-        {
-          "name": "OPENPROJECT_TIMEOUT_MS",
-          "description": "Request timeout in milliseconds from 1000 to 300000",
-          "isRequired": false,
-          "isSecret": false,
-          "format": "string",
-          "default": "30000"
-        },
-        {
-          "name": "OPENPROJECT_AUTH_MODE",
-          "description": "API-token authentication mode: basic for broad compatibility or bearer for OpenProject 17.2+",
-          "isRequired": false,
-          "isSecret": false,
-          "format": "string",
-          "default": "basic"
-        },
-        {
-          "name": "OPENPROJECT_ALLOWED_UPLOAD_DIRS",
-          "description": "Platform-separated directories from which attachment files may be read; defaults to the process working directory",
-          "isRequired": false,
-          "isSecret": false,
-          "format": "string"
-        }
+        { "name": "OPENPROJECT_URL", "description": "OpenProject origin, for example https://openproject.example.com", "isRequired": true, "isSecret": false, "format": "string" },
+        { "name": "OPENPROJECT_API_TOKEN", "description": "OpenProject API token", "isRequired": true, "isSecret": true, "format": "string" },
+        { "name": "OPENPROJECT_PAGE_SIZE", "description": "Default page size from 1 to 100", "isRequired": false, "isSecret": false, "format": "string", "default": "25" },
+        { "name": "OPENPROJECT_TIMEOUT_MS", "description": "Request timeout in milliseconds from 1000 to 300000", "isRequired": false, "isSecret": false, "format": "string", "default": "30000" },
+        { "name": "OPENPROJECT_AUTH_MODE", "description": "API-token authentication mode: basic or bearer", "isRequired": false, "isSecret": false, "format": "string", "default": "basic" },
+        { "name": "OPENPROJECT_ALLOWED_UPLOAD_DIRS", "description": "Platform-separated upload roots", "isRequired": false, "isSecret": false, "format": "string" },
+        { "name": "OPENPROJECT_WRITE_ENABLED", "description": "Enable explicitly scoped policy-gated writes", "isRequired": false, "isSecret": false, "format": "string", "default": "false" },
+        { "name": "OPENPROJECT_ALLOWED_PROJECT_IDS", "description": "Comma-separated permitted project IDs; empty denies scoped writes", "isRequired": false, "isSecret": false, "format": "string" },
+        { "name": "OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS", "description": "Comma-separated permitted type IDs; empty denies scoped writes", "isRequired": false, "isSecret": false, "format": "string" },
+        { "name": "OPENPROJECT_ALLOW_DESTRUCTIVE", "description": "Enable policy-gated destructive operations", "isRequired": false, "isSecret": false, "format": "string", "default": "false" }
       ]
     }
   ]

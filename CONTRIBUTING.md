@@ -1,36 +1,33 @@
 # Contributing
 
-Contributions are welcome. Please open an issue before starting a substantial
-change so the approach can be discussed first.
+Thank you for considering a contribution to OpenProject MCP. This public MIT fork is maintained by Turbo Crowd and credits its upstream project; see [UPSTREAM.md](UPSTREAM.md).
+
+## Before you start
+
+Open an issue before substantial work so maintainers can discuss API compatibility, safety impact, and test scope. Do not submit credentials, environment files, private instance URLs, customer data, or unredacted logs.
 
 ## Development setup
 
-1. Install Bun 1.3 or newer.
-2. Install and check the plugin:
+```bash
+cd plugins/openproject
+bun install --frozen-lockfile
+bun run typecheck
+bun test
+bun run build
+```
 
-   ```bash
-   cd plugins/openproject
-   bun install --frozen-lockfile
-   bun run check
-   ```
-
-3. Check the portable installer and Unix wrappers from the repository root:
-
-   ```bash
-   bun scripts/install.ts --help
-   bun scripts/uninstall.ts --help
-   bash -n scripts/install.sh scripts/uninstall.sh
-   ```
-
-Use a test OpenProject instance or a least-privilege token while developing.
-Never include tokens, environment files, customer data, or private instance
-URLs in commits, issues, logs, or screenshots.
+Use a disposable OpenProject instance and a least-privilege token for manual checks. The automated suite must not require a live OpenProject call.
 
 ## Pull requests
 
-- Keep each pull request focused.
-- Explain user-visible behavior and validation steps.
-- Add or update documentation when behavior changes.
-- Add tests for request-building and API behavior changes.
-- Use Conventional Commits, for example `feat: add status lookup` or
-  `fix: preserve work package lock version`.
+- Keep each change focused and preserve existing tool names, required inputs, and annotations unless the issue explicitly proposes a compatible migration.
+- Add deterministic tests for behavior, particularly policy, write, delete, and sanitization changes.
+- Document user-visible configuration or safety changes.
+- State validation commands and any limitations in the pull request.
+- Use Conventional Commits, for example `feat: add status lookup` or `fix: preserve work package lock version`.
+
+## Safety changes
+
+Writes must remain least-privilege and fail closed. Preview behavior, explicit confirmation, allowlists, destructive guards, and audit redaction need tests. Do not broaden a configured scope as a convenience or use a live production instance as a test target.
+
+By participating, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).

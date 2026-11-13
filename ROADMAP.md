@@ -1,33 +1,24 @@
 # Roadmap
 
-The roadmap favors safer workflows and better discovery before adding broad
-administrative capabilities.
+The roadmap favors safe, testable adoption over broad claims. Items are proposals, not commitments.
 
-## Released in v0.2.0
+## Current fork baseline
 
-- Cross-platform installation on Windows, macOS, and Linux.
-- Filter work packages by status, assignee, due date, and current user.
-- Compact work-package results with scheduling and progress fields.
-- Clickable OpenProject URLs in search and write results.
-- Unit tests for API authentication, filters, updates, and errors.
+- Retained API v3 project, work-package, attachment, relation, watcher, notification, board, user, and reference-data tools.
+- Corrected attachment metadata and relation creation routing in the current migration branch.
+- Added a public policy foundation: fail-closed configuration parsing, preview-first decisions, project/type allowlists, a destructive opt-in, and sanitized audit records.
+- Added 31 deterministic-test-validated CE tools for Meetings and agenda structures, News, Time Tracking, project-filtered memberships, and capability evidence. Their 17 mutations are preview-first, project-gated, ownership-checked, audited, and destructively guarded where applicable.
+- Added offline MCP stdio discovery and a data-driven matrix for all 32 writes: each proves preview behavior, no-I/O fail-closed denial under synthetic policy, and writable annotation metadata.
+- Added a fake-HAL confirmed-success E2E for all 15 inherited writes: under verified, policy-allowed scope, each issues exactly one intended mutation. The matrix remains denial evidence, not usability evidence.
+- Added an exact 72-tool runtime inventory: 41 inherited API v3 tools plus 31 CE tools.
 
-## Released in v0.5.0
+## Next stages
 
-- Project CRUD, native filtering, sorting, pagination, and count tools.
-- Work-package activities, deletion, scheduling, estimates, progress,
-  hierarchy, responsibility, and versions.
-- Attachment uploads and deletion, relations, watchers, notifications, boards,
-  users, available assignees, and reference data.
-- Request timeout and authentication-mode controls.
-- Restricted GET-only API v3 passthrough for uncommon read workflows.
+1. Run disposable-instance live E2E coverage for version-specific API v3 and CE contracts. Live E2E is not part of the deterministic validation claim.
+2. Extend recovery reporting from the current proportional pre-image data where a live endpoint contract supports it.
+3. Add client-specific setup examples while retaining a client-independent MCP contract.
+4. Decide publication, release automation, and registry registration in a separate reviewed workflow.
 
-## Later
+## Deliberately not claimed
 
-- Optional read-only mode.
-- Integration tests against a disposable OpenProject instance.
-- Automated release notes and version synchronization.
-- OAuth support for centrally administered, multi-user deployments.
-- Board card movement after validating behavior across free and action boards.
-
-Roadmap items are proposals, not commitments. Open an issue to discuss new
-capabilities before starting a substantial implementation.
+The fork does not claim live-instance validation for all 72 tools, OAuth, a hosted service, automatic rollback, or a production migration guarantee.

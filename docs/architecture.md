@@ -1,59 +1,45 @@
 # Architecture
 
-The project is intentionally small: Codex starts one local MCP process, and
-that process talks directly to the configured OpenProject API v3 instance.
+OpenProject MCP is a local, general-purpose stdio server. A compatible MCP client starts the process, the server validates tool input and policy decisions, and the API client communicates only with the configured OpenProject API v3 origin.
 
 ```mermaid
 flowchart LR
-    User[User] --> Codex[Codex]
-    Codex <-->|MCP over stdio| Server[OpenProject MCP server]
+    Client[MCP client] -->|MCP over stdio| Server[OpenProject MCP server]
     Server --> Tools[Tool handlers and schemas]
-    Tools --> Client[OpenProject API client]
-    Client <-->|HTTPS + HAL/JSON| API[OpenProject API v3]
-    Env[Private environment file] --> Server
+    Tools --> Policy[Policy and audit primitives]
+    Tools --> ClientAPI[OpenProject API client]
+    ClientAPI <-->|HTTPS + HAL/JSON| API[OpenProject API v3]
+    Env[Private environment] --> Server
 ```
 
 ## Components
 
-- `scripts/server.ts` loads configuration, registers MCP tools, and maps tool
-  inputs to OpenProject operations.
-- `scripts/openproject-api.ts` owns HTTP authentication, HAL collection
-  helpers, filter encoding, multipart transfers, update payloads, timeouts, and
-  API error handling.
-- `scripts/expanded-tools.ts` registers the broader project, task, attachment,
-  relation, user, watcher, notification, board, and reference-data surface.
-- `skills/openproject/SKILL.md` guides Codex toward safe reads and explicit
-  writes.
-- `.mcp.json` describes how Codex starts the server from the plugin.
-- `scripts/install.ts` and `scripts/uninstall.ts` provide the shared installer
-  implementation used by the Unix and Windows wrappers.
-- `tests/openproject-api.test.ts` exercises request construction, headers,
-  errors, HAL helpers, filters, and optimistic-lock update payloads.
+- `scripts/server.ts` loads configuration, registers core tools, and applies the current staged policy gate.
+- `scripts/expanded-tools.ts` registers the broader inherited project, task, attachment, relation, user, watcher, notification, board, and reference-data surface.
+- `scripts/policy.ts` parses fail-closed public configuration, evaluates preview/write/destructive decisions, and creates sanitized audit records.
+- `scripts/openproject-api.ts` owns HTTP authentication, HAL helpers, filter encoding, multipart transfers, timeouts, and API error handling.
+- `tests/` contains deterministic request, relation, upload-root, and policy tests.
 
-## Write path
+## Mutation path
 
-OpenProject work-package updates use optimistic concurrency:
+The policy foundation starts with no write authority. A policy-gated mutation follows this order:
 
-1. The server reads the current work package.
-2. It copies the current `lockVersion` into the update payload.
-3. It sends only the fields requested by the user.
-4. OpenProject rejects the update if another client changed the work package
-   first.
+1. The tool resolves its target context.
+2. Without `confirm: true`, it returns a preview and makes no mutation request.
+3. With confirmation, the policy requires `OPENPROJECT_WRITE_ENABLED=true`.
+4. Project and work-package type IDs must match configured allowlists when supplied.
+5. Destructive actions additionally require `OPENPROJECT_ALLOW_DESTRUCTIVE=true`.
+6. The server emits a sanitized audit decision to stderr when auditing is enabled.
 
-This avoids silently overwriting concurrent changes.
+Every registered mutation passes through preview-first policy handling. Confirmed inherited mutations resolve ownership from verified HAL resources before policy evaluation and can execute when that scope is allowed. When no target can establish scope, `create_work_package`, `mark_all_notifications_read`, and top-level `create_project` require an explicit `projectId`; the latter uses it only as configured authorization scope, while a subproject derives scope from `parentId`. Unresolved or mismatched scope fails closed. The wrapper evaluates policy once; `create_work_package` supplies its resolved work-package type in that same decision. The policy module remains independent so deterministic coverage can run without a live OpenProject instance. Disposable-instance validation is still required for version-specific endpoint contracts.
 
 ## Security boundaries
 
-- The API token stays in a local environment file and is sent only to the
-  configured OpenProject origin.
-- The MCP server communicates with Codex over local standard input/output.
-- OpenProject remains the authorization authority; the plugin cannot exceed
-  the API token owner's permissions.
-- Read and write tools are annotated separately, and the bundled skill
-  requires an explicit, unambiguous request before a write.
-- Destructive tools carry a separate annotation for client-side confirmation.
-- The generic read escape hatch rejects absolute URLs and paths outside
-  `/api/v3`, so the configured OpenProject origin remains the only network
-  destination.
-- Attachment downloads and local-file uploads enforce explicit byte limits;
-  uploads also resolve symlinks and stay inside configured allowlisted roots.
+- The API token stays in a local environment source and is sent only to the configured OpenProject origin.
+- OpenProject remains the authorization authority; the server cannot exceed the API token owner's permissions.
+- Read, write, and destructive tools carry separate MCP annotations.
+- The GET escape hatch rejects absolute URLs and paths outside `/api/v3`.
+- Attachment transfers enforce size limits; uploads resolve symlinks and stay inside configured roots.
+- Policy audit output redacts credential-shaped fields and private-loopback URLs.
+
+For operational setup and constraints, see the [README](../README.md) and [Security Policy](../SECURITY.md).

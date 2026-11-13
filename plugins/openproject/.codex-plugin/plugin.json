@@ -1,23 +1,23 @@
 {
-  "name": "openproject",
+  "name": "openproject-mcp",
   "version": "0.5.0",
-  "description": "Manage OpenProject projects and work packages from Codex",
+  "description": "General-purpose OpenProject API v3 MCP server",
   "author": {
-    "name": "alex13slem"
+    "name": "Turbo Crowd"
   },
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
-    "displayName": "OpenProject",
-    "shortDescription": "Manage OpenProject projects and tasks.",
-    "longDescription": "Manage projects, work packages, attachments, relations, boards, users, watchers, and notifications through OpenProject API v3.",
-    "developerName": "alex13slem",
+    "displayName": "OpenProject MCP",
+    "shortDescription": "Manage OpenProject through a local MCP server.",
+    "longDescription": "General-purpose OpenProject API v3 MCP server for projects, work packages, attachments, relations, boards, users, watchers, and notifications.",
+    "developerName": "Turbo Crowd",
     "category": "Productivity",
     "capabilities": [
       "Interactive",
       "Write"
     ],
-    "websiteURL": "https://github.com/alex13slem/openproject-codex-plugin",
+    "websiteURL": "https://github.com/Turbo-Crowd/openproject-mcp",
     "defaultPrompt": [
       "Show my active OpenProject tasks.",
       "Create an OpenProject task for this change.",

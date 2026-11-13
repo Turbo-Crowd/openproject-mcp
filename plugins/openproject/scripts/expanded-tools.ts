@@ -16,6 +16,13 @@ import {
   type OpenProjectFilter,
   workPackageWebUrl,
 } from "./openproject-api.js";
+import {
+  buildRelationCreatePayload,
+  describeExistingRelation,
+  findExistingPairRelation,
+  resolveRelationCreateRoute,
+  type ExistingRelation,
+} from "./relation-route.js";
 
 const filterSchema = z.array(
   z.object({
@@ -95,6 +102,12 @@ function summarizeReference(resource: HalResource) {
   };
 }
 
+function assertWorkPackage(label: string, id: number, resource: HalResource): void {
+  if (resource._type && resource._type !== "WorkPackage") {
+    throw new Error(`${label} ID ${id} did not resolve to a WorkPackage`);
+  }
+}
+
 function summarizeRelation(resource: HalResource) {
   return {
     id: resource.id,
@@ -165,6 +178,19 @@ export function assertAllowedUploadPath(
   return resolvedFile;
 }
 
+export const EXPANDED_TOOL_NAMES = [
+  "get_project", "create_project", "update_project", "delete_project",
+  "count_projects", "count_work_packages", "list_work_package_activities",
+  "delete_work_package", "list_work_package_relations", "get_work_package_relation",
+  "create_work_package_relation", "delete_work_package_relation", "upload_work_package_attachment",
+  "delete_work_package_attachment", "get_current_user", "list_users", "get_user",
+  "list_available_assignees", "list_work_package_types", "list_work_package_statuses",
+  "list_work_package_priorities", "list_project_versions", "list_work_package_watchers",
+  "add_work_package_watcher", "remove_work_package_watcher", "list_notifications",
+  "get_notification", "mark_notification_read", "mark_all_notifications_read", "list_boards",
+  "get_board", "list_board_lanes", "get_openproject_api",
+] as const;
+
 export function registerExpandedTools(
   server: McpServer,
   api: OpenProjectApi,
@@ -186,13 +212,13 @@ export function registerExpandedTools(
     "create_project",
     {
       description:
-        "Create a project or subproject immediately. Use only after confirming a new project is wanted; parentId creates it below an existing project. Requires add-project permission and is not idempotent.",
+        "Create a project or subproject immediately. Use only after confirming a new project is wanted; parentId creates it below an existing project. A top-level project requires projectId as an explicit configured authorization scope. Requires add-project permission and is not idempotent.",
       inputSchema: {
         name: z.string().min(1),
         identifier: z.string().regex(/^[a-z0-9][a-z0-9_-]*$/).optional(),
         description: z.string().optional(),
         public: z.boolean().optional(),
-        parentId: z.number().int().positive().optional().describe("Existing parent project ID; omit for a top-level project"),
+        parentId: z.number().int().positive().optional().describe("Existing parent project ID; omit for a top-level project, which then requires projectId as its authorization scope"),
       },
       annotations: {
         readOnlyHint: false,
@@ -420,19 +446,36 @@ export function registerExpandedTools(
       },
     },
     async ({ fromId, toId, type, description, lag }) => {
-      const created = await api("/api/v3/relations", {
+      if (fromId === toId) {
+        throw new Error(`A work package cannot be related to itself (received #${fromId} as both from and to)`);
+      }
+      const body = buildRelationCreatePayload({ type, toId, description, lag });
+      const [fromWorkPackage, toWorkPackage] = await Promise.all([
+        api(`/api/v3/work_packages/${fromId}`),
+        api(`/api/v3/work_packages/${toId}`),
+      ]);
+      assertWorkPackage("from", fromId, fromWorkPackage);
+      assertWorkPackage("to", toId, toWorkPackage);
+      const route = resolveRelationCreateRoute(fromId, fromWorkPackage);
+      const existing = await api(`/api/v3/work_packages/${fromId}/relations`);
+      const duplicate = findExistingPairRelation(
+        elements(existing) as ExistingRelation[],
+        fromId,
+        toId,
+      );
+      if (duplicate) {
+        throw new Error(
+          `Relation not created: ${describeExistingRelation(duplicate, fromId, toId)}. Use get_work_package_relation to inspect it instead of creating a duplicate.`,
+        );
+      }
+      const created = await api(route.path, {
         method: "POST",
-        body: JSON.stringify({
-          type,
-          ...(description !== undefined ? { description } : {}),
-          ...(lag !== undefined ? { lag } : {}),
-          _links: {
-            from: { href: `/api/v3/work_packages/${fromId}` },
-            to: { href: `/api/v3/work_packages/${toId}` },
-          },
-        }),
+        body: JSON.stringify(body),
       });
-      return result(summarizeRelation(created));
+      return result({
+        ...summarizeRelation(created),
+        route: { path: route.path, source: route.source },
+      });
     },
   );
 
