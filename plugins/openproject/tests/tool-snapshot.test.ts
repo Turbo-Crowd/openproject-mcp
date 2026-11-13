@@ -10,6 +10,7 @@ const policy: OpenProjectPolicy = {
   writeEnabled: false,
   allowedProjectIds: [],
   allowedWorkPackageTypeIds: [],
+  allowedWriteTools: [],
   allowDestructive: false,
   auditEnabled: false,
 };

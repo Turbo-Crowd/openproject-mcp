@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The project follows [Se
 
 ## Unreleased
 
+## 0.6.2 - 2026-11-13
+
+### Added
+
+- Exact server-side write-tool allowlisting through `OPENPROJECT_ALLOWED_WRITE_TOOLS`; the default empty list denies every confirmed write while preserving zero-I/O previews.
+- Confirmed meeting, agenda, section, and outcome mutations now require project-bound `confirmed_enabled` meeting-module evidence.
+- Membership create, update, and delete now require explicit per-operation project authorization through `OPENPROJECT_MEMBERSHIP_WRITE_POLICY`, in addition to the generic write, project, tool, destructive, and protection gates.
+
+### Changed
+
+- Uploads require explicit `OPENPROJECT_ALLOWED_UPLOAD_DIRS`; no configured roots now fail closed before local file bytes are read.
+- The policy loader rejects unknown/non-write allowlist entries and duplicate module-evidence project/module records.
+
 ## 0.6.1 - 2026-11-13
 
 ### Fixed

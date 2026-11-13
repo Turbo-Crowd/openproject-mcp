@@ -161,10 +161,10 @@ export function assertAllowedUploadPath(
   configuredRoots = process.env.OPENPROJECT_ALLOWED_UPLOAD_DIRS,
 ): string {
   const resolvedFile = realpathSync(filePath);
-  const roots = (configuredRoots
-    ? configuredRoots.split(delimiter).filter(Boolean)
-    : [process.cwd()]
-  ).map((root) => realpathSync(root));
+  if (!configuredRoots?.trim()) {
+    throw new Error("Upload roots are not configured. Set OPENPROJECT_ALLOWED_UPLOAD_DIRS to an explicit allowlist.");
+  }
+  const roots = configuredRoots.split(delimiter).filter(Boolean).map((root) => realpathSync(root));
   const allowed = roots.some((root) => {
     const child = relative(root, resolvedFile);
     return child === "" || (!child.startsWith("..") && !isAbsolute(child));
@@ -172,7 +172,7 @@ export function assertAllowedUploadPath(
   if (!allowed) {
     throw new Error(
       "Upload path is outside OPENPROJECT_ALLOWED_UPLOAD_DIRS " +
-        `(default: current working directory): ${resolvedFile}`,
+        `: ${resolvedFile}`,
     );
   }
   return resolvedFile;
@@ -501,7 +501,7 @@ export function registerExpandedTools(
     "upload_work_package_attachment",
     {
       description:
-        "Read one explicit allowlisted local file and upload it to a work package. Use only when the user identified both the file and target task. Paths must be under OPENPROJECT_ALLOWED_UPLOAD_DIRS (default: current working directory). The call rejects files above maxBytes, sends bytes only to the configured OpenProject origin, creates a permanent attachment, and never modifies the local file.",
+        "Read one explicit allowlisted local file and upload it to a work package. Use only when the user identified both the file and target task. Paths must be under an explicitly configured OPENPROJECT_ALLOWED_UPLOAD_DIRS allowlist. The call rejects files above maxBytes, sends bytes only to the configured OpenProject origin, creates a permanent attachment, and never modifies the local file.",
       inputSchema: {
         workPackageId: z.number().int().positive(),
         filePath: z.string().min(1).describe("Explicit local file path to read and upload"),

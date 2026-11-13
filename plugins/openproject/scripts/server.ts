@@ -22,7 +22,7 @@ import { registerExpandedTools } from "./expanded-tools.js";
 import { registerCeTools } from "./ce-tools.js";
 import { createAuditRecord, evaluateMutation, loadOpenProjectPolicy } from "./policy.js";
 import { resolveInheritedWriteScope } from "./inherited-write-scope.js";
-import { INHERITED_DIRECT_TOOL_NAMES } from "./tool-inventory.js";
+import { INHERITED_DIRECT_TOOL_NAMES, WRITE_TOOL_NAMES } from "./tool-inventory.js";
 export { EXPECTED_TOOL_COUNT, INHERITED_DIRECT_TOOL_NAMES } from "./tool-inventory.js";
 
 function loadEnvFile(path: string): void {
@@ -88,7 +88,7 @@ const api = createOpenProjectApi(
   timeoutMs,
   authMode,
 );
-const policy = loadOpenProjectPolicy();
+const policy = loadOpenProjectPolicy(process.env, WRITE_TOOL_NAMES);
 
 const filterSchema = z.array(
   z.object({
@@ -125,7 +125,7 @@ async function resolveProjectType(
   return selected.id;
 }
 
-const server = new McpServer({ name: "io.github.Turbo-Crowd/openproject-mcp", version: "0.6.1" });
+const server = new McpServer({ name: "io.github.Turbo-Crowd/openproject-mcp", version: "0.6.2" });
 
 // Apply preview, verified resource scope, and audit policy to inherited mutations.
 const originalRegisterTool = server.registerTool.bind(server);
@@ -153,10 +153,17 @@ const originalRegisterTool = server.registerTool.bind(server);
   }, async (args: Record<string, unknown>) => {
     const operation = annotations.destructiveHint ? "destructive" : "write";
     if (args.confirm !== true) {
-      const decision = { allowed: false, preview: true, reason: "Set confirm: true after reviewing the preview to execute this mutation." } as const;
+      const decision = evaluateMutation(policy, { tool: name, operation, confirm: false });
       const audit = createAuditRecord({ tool: name, operation, confirm: false }, decision);
       if (policy.auditEnabled) console.error(JSON.stringify(audit));
-      return result({ status: "PREVIEW", preview: true, tool: name, audit, message: decision.reason });
+      return result({ status: "PREVIEW", preview: true, tool: name, audit, message: "Set confirm: true after reviewing the preview to execute this mutation.", allowedWriteTool: policy.allowedWriteTools.includes(name) });
+    }
+    // Reject disabled or unallowlisted mutations before any scope-preflight I/O.
+    const preliminary = evaluateMutation(policy, { tool: name, operation, confirm: true });
+    if (!preliminary.allowed) {
+      const audit = createAuditRecord({ tool: name, operation, confirm: true }, preliminary);
+      if (policy.auditEnabled) console.error(JSON.stringify(audit));
+      return result({ status: "POLICY_DENIED", tool: name, audit, message: preliminary.reason });
     }
     let scope: { projectId: number; workPackageTypeId?: number };
     try {

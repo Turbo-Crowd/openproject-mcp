@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { EXPECTED_TOOL_COUNT } from "../scripts/tool-inventory.js";
+import { EXPECTED_TOOL_COUNT, EXPECTED_WRITE_TOOL_COUNT } from "../scripts/tool-inventory.js";
 
 const transports: StdioClientTransport[] = [];
 
@@ -59,7 +59,7 @@ test("all 32 writes have individual runtime preview, annotation, and fail-closed
     env: {
       OPENPROJECT_URL: "https://openproject.invalid",
       OPENPROJECT_API_TOKEN: "synthetic-token",
-      OPENPROJECT_WRITE_ENABLED: "false",
+      OPENPROJECT_WRITE_ENABLED: "true",
     },
     stderr: "pipe",
   });
@@ -68,7 +68,7 @@ test("all 32 writes have individual runtime preview, annotation, and fail-closed
   await client.connect(transport);
   const listed = await client.listTools();
   expect(listed.tools).toHaveLength(EXPECTED_TOOL_COUNT);
-  expect(Object.keys(writes)).toHaveLength(32);
+  expect(Object.keys(writes)).toHaveLength(EXPECTED_WRITE_TOOL_COUNT);
 
   for (const [name, args] of Object.entries(writes)) {
     const tool = listed.tools.find((candidate) => candidate.name === name);
@@ -81,12 +81,8 @@ test("all 32 writes have individual runtime preview, annotation, and fail-closed
     expect(preview.preview).toBe(true);
 
     const confirmed = responseText(await client.callTool({ name, arguments: { ...args, confirm: true } }));
-    if (name.startsWith("ce_")) {
-      expect(confirmed.status).toBe("POLICY_DENIED");
-    } else {
-      // The invalid endpoint proves preflight occurs before an inherited mutation.
-      expect(confirmed.status).toBe("PROJECT_SCOPE_UNRESOLVED");
-    }
+    expect(confirmed.status).toBe("POLICY_DENIED");
+    expect(confirmed.message).toBe("WRITE_TOOL_NOT_ALLOWED: target tool is not in OPENPROJECT_ALLOWED_WRITE_TOOLS.");
     expect(confirmed.preview).not.toBe(true);
   }
 });

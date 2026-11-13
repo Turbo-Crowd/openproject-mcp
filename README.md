@@ -67,7 +67,7 @@ OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS=1
 OPENPROJECT_ALLOW_DESTRUCTIVE=false
 ```
 
-All registered mutations pass through preview-first policy handling. Confirmed inherited mutations use verified resource ownership where available and are usable when the resolved scope is allowed by policy. A confirmed `update_work_package` additionally resolves the target's live type link before the type allowlist is evaluated; absent or malformed project/type evidence is denied before PATCH. `create_work_package`, `mark_all_notifications_read`, and a top-level `create_project` require `projectId` on confirmation because their target cannot establish scope itself; for top-level project creation, `projectId` is an explicit configured authorization scope, not inferred ownership. A subproject `create_project` derives scope from `parentId`. CE mutations require an explicit allowed project ID and perform endpoint-specific ownership checks where a target resource is involved. Omitting `confirm` always yields a harmless, zero-I/O preview.
+All registered mutations pass through preview-first policy handling. A confirmed mutation requires an exact name in `OPENPROJECT_ALLOWED_WRITE_TOOLS`; an empty allowlist denies every confirmed write. Confirmed inherited mutations use verified resource ownership where available and are usable when the resolved scope is allowed by policy. A confirmed `update_work_package` additionally resolves the target's live type link before the type allowlist is evaluated; absent or malformed project/type evidence is denied before PATCH. `create_work_package`, `mark_all_notifications_read`, and a top-level `create_project` require `projectId` on confirmation because their target cannot establish scope itself; for top-level project creation, `projectId` is an explicit configured authorization scope, not inferred ownership. A subproject `create_project` derives scope from `parentId`. Meeting-domain CE writes require configured `confirmed_enabled` project module evidence. Membership writes additionally require per-operation project authorization and retain protected-project, protected-membership, and last-admin safeguards. Omitting `confirm` always yields a harmless, zero-I/O preview.
 
 ## Configuration
 
@@ -78,10 +78,13 @@ All registered mutations pass through preview-first policy handling. Confirmed i
 | `OPENPROJECT_PAGE_SIZE` | `25` | Default list size, from 1 to 100 |
 | `OPENPROJECT_TIMEOUT_MS` | `30000` | Request timeout, from 1000 to 300000 ms |
 | `OPENPROJECT_AUTH_MODE` | `basic` | `basic` or `bearer` |
-| `OPENPROJECT_ALLOWED_UPLOAD_DIRS` | current directory | Platform-separated upload roots |
+| `OPENPROJECT_ALLOWED_UPLOAD_DIRS` | empty | Platform-separated explicit upload roots; missing configuration denies uploads |
 | `OPENPROJECT_WRITE_ENABLED` | `false` | Enables policy-gated writes |
+| `OPENPROJECT_ALLOWED_WRITE_TOOLS` | empty | Exact comma-separated registered write tool names; empty denies all confirmed writes |
 | `OPENPROJECT_ALLOWED_PROJECT_IDS` | empty | Comma-separated permitted project IDs |
 | `OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS` | empty | Comma-separated permitted work-package type IDs |
+| `OPENPROJECT_MODULE_EVIDENCE` | empty | JSON evidence records; meeting writes require `confirmed_enabled` for their project |
+| `OPENPROJECT_MEMBERSHIP_WRITE_POLICY` | empty | JSON per-operation membership project allowlists; empty denies membership writes |
 | `OPENPROJECT_ALLOW_DESTRUCTIVE` | `false` | Enables policy-gated destructive writes |
 | `OPENPROJECT_AUDIT_ENABLED` | `true` | Emits sanitized policy audit records to stderr |
 

@@ -8,8 +8,11 @@ const permissive: OpenProjectPolicy = {
   writeEnabled: true,
   allowedProjectIds: [21],
   allowedWorkPackageTypeIds: [],
+  allowedWriteTools: ["ce_create_meeting", "ce_update_meeting", "ce_delete_meeting", "ce_create_agenda_item", "ce_update_agenda_item", "ce_create_meeting_section", "ce_create_meeting_outcome", "ce_delete_meeting_agenda_child", "ce_create_news", "ce_update_news", "ce_delete_news", "ce_create_time_entry", "ce_update_time_entry", "ce_delete_time_entry", "ce_create_membership", "ce_update_membership", "ce_delete_membership"],
   allowDestructive: true,
   auditEnabled: false,
+  moduleEvidence: [{ projectId: 21, module: "meetings", state: "confirmed_enabled" }],
+  membershipWritePolicy: { allowedCreateProjectIds: [21], allowedUpdateProjectIds: [21], allowedDeleteProjectIds: [21] },
 };
 const denied = { ...permissive, allowedProjectIds: [] };
 function registered(server: McpServer) {
