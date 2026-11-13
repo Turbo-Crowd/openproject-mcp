@@ -29,7 +29,17 @@ sha256sum --check SHA256SUMS
 
 3. Extract the archive and configure a compatible MCP client to run the included `openproject-mcp.js` as a local stdio process. Provide `OPENPROJECT_URL` and `OPENPROJECT_API_TOKEN` through the client environment; keep credentials private.
 
-The release archive is a standalone distribution asset. Package and registry publication require a separate decision and are not implied by this release.
+The release archive is a standalone distribution asset. The release workflow builds it with normalized entry order, timestamp, ownership, and gzip metadata, so the same tagged source produces the same archive bytes. Package and registry publication require a separate decision and are not implied by this release.
+
+## Docker image build
+
+Build the image from this repository checkout:
+
+```bash
+docker build -t openproject-mcp:v0.6.0 .
+```
+
+The Dockerfile builds the server from the checked-out source with the frozen Bun lockfile. It does not install an npm package, so it remains usable while package publication is intentionally unavailable.
 
 ## Contribute
 

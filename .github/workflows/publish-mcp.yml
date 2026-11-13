@@ -28,8 +28,37 @@ jobs:
           cp dist/openproject-mcp.js ../../openproject-mcp.js
           cp README.md ../../README.md
           cd ../..
-          tar -czf openproject-mcp-${{ github.event.release.tag_name }}.tar.gz openproject-mcp.js README.md
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct HEAD)"
+          tar \
+            --sort=name \
+            --mtime="@$SOURCE_DATE_EPOCH" \
+            --owner=0 \
+            --group=0 \
+            --numeric-owner \
+            -I 'gzip -n' \
+            -cf openproject-mcp-${{ github.event.release.tag_name }}.tar.gz \
+            openproject-mcp.js README.md
           sha256sum openproject-mcp-${{ github.event.release.tag_name }}.tar.gz > SHA256SUMS
+          rm openproject-mcp.js README.md
+
+      - name: Verify deterministic release archive
+        working-directory: plugins/openproject
+        run: |
+          cp dist/openproject-mcp.js ../../openproject-mcp.js
+          cp README.md ../../README.md
+          cd ../..
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct HEAD)"
+          tar \
+            --sort=name \
+            --mtime="@$SOURCE_DATE_EPOCH" \
+            --owner=0 \
+            --group=0 \
+            --numeric-owner \
+            -I 'gzip -n' \
+            -cf openproject-mcp-verify.tar.gz \
+            openproject-mcp.js README.md
+          cmp --silent openproject-mcp-${{ github.event.release.tag_name }}.tar.gz openproject-mcp-verify.tar.gz
+          rm openproject-mcp.js README.md openproject-mcp-verify.tar.gz
 
       - name: Upload release assets
         env:

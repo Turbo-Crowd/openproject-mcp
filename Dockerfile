@@ -1,5 +1,16 @@
+FROM oven/bun:1.3.14-alpine AS build
+
+WORKDIR /app/plugins/openproject
+
+COPY plugins/openproject/package.json plugins/openproject/bun.lock ./
+RUN bun install --frozen-lockfile
+
+COPY plugins/openproject/ ./
+RUN bun run build
+
 FROM node:20-alpine
 
-RUN npm install --global @turbo-crowd/openproject-mcp@0.5.0
+WORKDIR /app
+COPY --from=build /app/plugins/openproject/dist/openproject-mcp.js ./openproject-mcp.js
 
-ENTRYPOINT ["openproject-mcp"]
+ENTRYPOINT ["node", "/app/openproject-mcp.js"]

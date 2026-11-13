@@ -46,7 +46,7 @@ OPENPROJECT_URL=https://openproject.example.com
 OPENPROJECT_API_TOKEN=<set-in-your-client-environment>
 ```
 
-The package identity is `@turbo-crowd/openproject-mcp`. The planned MCP Registry identity is `io.github.Turbo-Crowd/openproject-mcp`; neither is a publication promise.
+The package identity is `@turbo-crowd/openproject-mcp`. The planned MCP Registry identity is `io.github.Turbo-Crowd/openproject-mcp`; neither is a publication promise. Build the included Dockerfile from a repository checkout when a container is needed; it compiles the checked-out source and does not require a published npm package.
 
 ## Safety model
 
