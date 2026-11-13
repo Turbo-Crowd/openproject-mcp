@@ -73,7 +73,7 @@ test("all 15 inherited writes resolve fake-HAL scope and issue exactly one inten
   });
   try {
     const transport = new StdioClientTransport({
-      command: "/tmp/opencode/bun-1.3.14/bun-linux-x64/bun",
+      command: process.execPath,
       args: ["scripts/server.ts"],
       cwd: process.cwd(),
       env: {
@@ -140,7 +140,7 @@ test("top-level create_project uses an explicit policy scope without a parent pa
   });
   try {
     const transport = new StdioClientTransport({
-      command: "/tmp/opencode/bun-1.3.14/bun-linux-x64/bun",
+      command: process.execPath,
       args: ["scripts/server.ts"],
       cwd: process.cwd(),
       env: {
