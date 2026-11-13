@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The project follows [Se
 
 ## Unreleased
 
+## 0.6.0 - 2026-11-13
+
 ### Changed
 
 - Fork identity is now Turbo Crowd: package `@turbo-crowd/openproject-mcp` and planned MCP Registry identity `io.github.Turbo-Crowd/openproject-mcp`.
@@ -21,10 +23,11 @@ All notable changes to this project are documented here. The project follows [Se
 - Attachment metadata is encoded as a scalar multipart JSON field.
 - Relation creation resolves the source HAL action route, validates targets and lag, detects duplicates, and sends a target-only payload.
 
-### Not yet included
+### Known boundaries
 
-- Disposable-instance live E2E validation of version-specific CE contracts.
-- Disposable-instance validation of version-specific write and recovery contracts.
+- Disposable-instance live E2E validation of version-specific CE contracts is pending.
+- Disposable-instance validation of version-specific write and recovery contracts is pending.
+- OpenCode runtime cutover is pending.
 
 ## 0.5.0 - 2026-07-14
 

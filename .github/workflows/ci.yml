@@ -82,6 +82,7 @@ jobs:
           python3 -m json.tool server.json >/dev/null
 
       - name: Check public source sanitization
-        run: |
-          ! grep -RInE 'openproject[.]turbocrowd[.]net|turbo-crowd-opencode|/home/claudiogrimo' \
-            --exclude=ci.yml --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist .
+        run: node scripts/check-public-sanitization.mjs
+
+      - name: Run public sanitization self-tests
+        run: node scripts/check-public-sanitization.mjs --self-test
