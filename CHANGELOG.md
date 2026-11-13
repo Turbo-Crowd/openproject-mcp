@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The project follows [Se
 
 ## Unreleased
 
+## 0.6.1 - 2026-11-13
+
+### Fixed
+
+- Time-entry listing now uses the API v3 collection with `entity_type` and `entity_id` filters, so an empty filtered collection is returned as an empty result rather than a missing nested route.
+- The time-entry activity discovery tool now uses OpenProject's `time_entries/available_projects` contract.
+- Project membership listing and duplicate detection now use the memberships collection filtered by project instead of an unsupported nested route.
+- Confirmed `update_work_package` mutations now resolve and policy-check the target's live project and type links before PATCH. Missing or malformed ownership/type evidence fails closed.
+
 ## 0.6.0 - 2026-11-13
 
 ### Changed

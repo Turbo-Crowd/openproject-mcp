@@ -17,7 +17,7 @@ function project(id = 7) {
 }
 
 function workPackage(id: number) {
-  return { id, _type: "WorkPackage", lockVersion: 1, _links: { project: { href: "/api/v3/projects/7" } } };
+  return { id, _type: "WorkPackage", lockVersion: 1, _links: { project: { href: "/api/v3/projects/7" }, type: { href: "/api/v3/types/1" } } };
 }
 
 function result(responseValue: unknown) {

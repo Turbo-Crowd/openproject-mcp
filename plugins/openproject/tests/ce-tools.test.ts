@@ -58,6 +58,35 @@ describe("CE policy and fake HAL behavior", () => {
     expect(calls).toBe(0);
   });
 
+  test("uses collection filters for entity time entries and preserves empty results", async () => {
+    const paths: string[] = [];
+    const instance = server(fakeApi(async (path) => { paths.push(path); return { offset: 1, pageSize: 25, count: 0, total: 0, _embedded: { elements: [] } }; }));
+    const response = text(await call(instance, "ce_list_time_entries", { entityType: "WorkPackage", entityId: 7, offset: 1, pageSize: 25 }));
+    expect(paths).toHaveLength(1);
+    const request = new URL(paths[0]!, "https://openproject.invalid");
+    expect(request.pathname).toBe("/api/v3/time_entries");
+    expect(JSON.parse(request.searchParams.get("filters")!)).toEqual([{ entity_type: { operator: "=", values: ["WorkPackage"] } }, { entity_id: { operator: "=", values: ["7"] } }]);
+    expect(response).toMatchObject({ status: "OK", total: 0, count: 0, elements: [] });
+  });
+
+  test("uses the available-projects activity contract", async () => {
+    const paths: string[] = [];
+    const instance = server(fakeApi(async (path) => { paths.push(path); return { _embedded: { elements: [{ id: 4, name: "Synthetic" }] } }; }));
+    const response = text(await call(instance, "ce_list_time_entry_activities", {}));
+    expect(paths).toEqual(["/api/v3/time_entries/available_projects"]);
+    expect(response).toMatchObject({ status: "OK", elements: [{ id: 4, name: "Synthetic" }] });
+  });
+
+  test("uses the global membership collection with a project filter", async () => {
+    const paths: string[] = [];
+    const instance = server(fakeApi(async (path) => { paths.push(path); return { offset: 1, pageSize: 25, count: 1, total: 1, _embedded: { elements: [{ id: 5 }] } }; }));
+    const response = text(await call(instance, "ce_list_memberships", { projectId: 7, offset: 1, pageSize: 25 }));
+    const request = new URL(paths[0]!, "https://openproject.invalid");
+    expect(request.pathname).toBe("/api/v3/memberships");
+    expect(JSON.parse(request.searchParams.get("filters")!)).toEqual([{ project: { operator: "=", values: ["7"] } }]);
+    expect(response).toMatchObject({ status: "OK", projectId: 7, elements: [{ id: 5 }] });
+  });
+
   test("reports empty project meetings without claiming a disabled module", async () => {
     const instance = server(fakeApi(async () => ({ _embedded: { elements: [] } })));
     const response = text(await call(instance, "ce_list_meetings", { projectId: 21 }));

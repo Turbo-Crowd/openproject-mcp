@@ -1,12 +1,12 @@
 import { expect, test } from "bun:test";
-import { resolveInheritedWriteProjectScope } from "../scripts/inherited-write-scope.js";
+import { resolveInheritedWriteProjectScope, resolveInheritedWriteScope } from "../scripts/inherited-write-scope.js";
 import type { OpenProjectApi } from "../scripts/openproject-api.js";
 
 const project = { id: 7, _type: "Project" };
 const workPackage = (id: number) => ({
   id,
   _type: "WorkPackage",
-  _links: { project: { href: "/api/v3/projects/7" } },
+  _links: { project: { href: "/api/v3/projects/7" }, type: { href: "/api/v3/types/3" } },
 });
 
 function apiForScope() {
@@ -73,4 +73,21 @@ test("top-level project creation fails closed without an explicit authorization 
 test("inherited write scope rejects mismatched caller scope", async () => {
   const { api } = apiForScope();
   await expect(resolveInheritedWriteProjectScope(api, "update_work_package", { id: 7, projectId: 8 })).rejects.toThrow("does not match");
+});
+
+test("update work package resolves the live project and type before policy evaluation", async () => {
+  const { api } = apiForScope();
+  await expect(resolveInheritedWriteScope(api, "update_work_package", { id: 7 })).resolves.toEqual({ projectId: 7, workPackageTypeId: 3 });
+});
+
+test("update work package fails closed without a live type link", async () => {
+  const api = (async () => ({ id: 7, _type: "WorkPackage", _links: { project: { href: "/api/v3/projects/7" } } })) as unknown as OpenProjectApi;
+  await expect(resolveInheritedWriteScope(api, "update_work_package", { id: 7 })).rejects.toThrow("project and type links");
+});
+
+test("update work package rejects malformed type and project evidence", async () => {
+  for (const links of [{ project: { href: "/api/v3/projects/not-an-id" }, type: { href: "/api/v3/types/3" } }, { project: { href: "/api/v3/projects/7" }, type: { href: "/api/v3/types/not-an-id" } }]) {
+    const api = (async () => ({ id: 7, _type: "WorkPackage", _links: links })) as unknown as OpenProjectApi;
+    await expect(resolveInheritedWriteScope(api, "update_work_package", { id: 7 })).rejects.toThrow("project and type links");
+  }
 });

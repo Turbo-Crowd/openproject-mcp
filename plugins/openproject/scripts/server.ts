@@ -21,7 +21,7 @@ import { resolveEnvFile } from "./config.js";
 import { registerExpandedTools } from "./expanded-tools.js";
 import { registerCeTools } from "./ce-tools.js";
 import { createAuditRecord, evaluateMutation, loadOpenProjectPolicy } from "./policy.js";
-import { resolveInheritedWriteProjectScope } from "./inherited-write-scope.js";
+import { resolveInheritedWriteScope } from "./inherited-write-scope.js";
 import { INHERITED_DIRECT_TOOL_NAMES } from "./tool-inventory.js";
 export { EXPECTED_TOOL_COUNT, INHERITED_DIRECT_TOOL_NAMES } from "./tool-inventory.js";
 
@@ -125,7 +125,7 @@ async function resolveProjectType(
   return selected.id;
 }
 
-const server = new McpServer({ name: "io.github.Turbo-Crowd/openproject-mcp", version: "0.6.0" });
+const server = new McpServer({ name: "io.github.Turbo-Crowd/openproject-mcp", version: "0.6.1" });
 
 // Apply preview, verified resource scope, and audit policy to inherited mutations.
 const originalRegisterTool = server.registerTool.bind(server);
@@ -158,18 +158,19 @@ const originalRegisterTool = server.registerTool.bind(server);
       if (policy.auditEnabled) console.error(JSON.stringify(audit));
       return result({ status: "PREVIEW", preview: true, tool: name, audit, message: decision.reason });
     }
-    let projectId: number;
+    let scope: { projectId: number; workPackageTypeId?: number };
     try {
-      projectId = await resolveInheritedWriteProjectScope(api, name, args);
+      scope = await resolveInheritedWriteScope(api, name, args);
     } catch {
       const decision = { allowed: false, preview: false, reason: "Verified project scope could not be resolved for this mutation." } as const;
       const audit = createAuditRecord({ tool: name, operation, confirm: true }, decision);
       if (policy.auditEnabled) console.error(JSON.stringify(audit));
       return result({ status: "PROJECT_SCOPE_UNRESOLVED", tool: name, audit, message: decision.reason });
     }
+    const projectId = scope.projectId;
     const workPackageTypeId = name === "create_work_package"
       ? await resolveProjectType(projectId, args.typeId as number | undefined)
-      : undefined;
+      : scope.workPackageTypeId;
     const intent = { tool: name, operation, projectId, workPackageTypeId, confirm: true } as const;
     const decision = evaluateMutation(policy, intent);
     const audit = createAuditRecord(intent, decision);

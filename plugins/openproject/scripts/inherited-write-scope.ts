@@ -83,13 +83,19 @@ async function notification(api: OpenProjectApi, id: number): Promise<number> {
 }
 
 /** Resolves write scope from verified API resources before policy evaluation. */
-export async function resolveInheritedWriteProjectScope(
+export type ResolvedInheritedWriteScope = {
+  projectId: number;
+  workPackageTypeId?: number;
+};
+
+export async function resolveInheritedWriteScope(
   api: OpenProjectApi,
   tool: string,
   args: ScopeArgs,
-): Promise<number> {
+): Promise<ResolvedInheritedWriteScope> {
   const supplied = explicitProjectId(args);
   let derived: number;
+  let workPackageTypeId: number | undefined;
 
   switch (tool) {
     case "create_work_package":
@@ -118,7 +124,19 @@ export async function resolveInheritedWriteProjectScope(
     case "delete_project":
       derived = await project(api, args.id as number);
       break;
-    case "update_work_package":
+    case "update_work_package": {
+      const resource = await api(`/api/v3/work_packages/${args.id as number}`);
+      assertResource(resource, args.id as number, "WorkPackage");
+      const projectId = projectIdFromHref(linkHref(resource, ["project"]));
+      const typeHref = linkHref(resource, ["type"]);
+      const typeId = Number(typeof typeHref === "string" ? typeHref.match(/\/api\/v3\/types\/(\d+)$/)?.[1] : NaN);
+      if (!projectId || !Number.isInteger(typeId) || typeId <= 0) {
+        throw new Error("Work package preflight did not provide verified project and type links.");
+      }
+      derived = projectId;
+      workPackageTypeId = typeId;
+      break;
+    }
     case "add_work_package_comment":
     case "delete_work_package":
       derived = await workPackage(api, args.id as number);
@@ -165,5 +183,14 @@ export async function resolveInheritedWriteProjectScope(
       throw new Error(`No inherited write scope resolver is configured for ${tool}.`);
   }
 
-  return requireMatchingProject(derived, supplied);
+  return { projectId: requireMatchingProject(derived, supplied), ...(workPackageTypeId ? { workPackageTypeId } : {}) };
+}
+
+/** Compatibility helper for callers that only need verified project ownership. */
+export async function resolveInheritedWriteProjectScope(
+  api: OpenProjectApi,
+  tool: string,
+  args: ScopeArgs,
+): Promise<number> {
+  return (await resolveInheritedWriteScope(api, tool, args)).projectId;
 }
