@@ -1,6 +1,6 @@
 {
   "name": "openproject-mcp",
-  "version": "0.6.1",
+  "version": "0.6.3",
   "description": "General-purpose OpenProject API v3 MCP server",
   "author": {
     "name": "Turbo Crowd"

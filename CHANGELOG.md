@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The project follows [Se
 
 ## Unreleased
 
+## 0.6.3 - 2026-11-13
+
+### Fixed
+
+- Aligned all active package, plugin, runtime, and registry manifest version declarations to `0.6.3`; this metadata-only patch changes no MCP behavior, tools, schemas, tests, or policies.
+
 ## 0.6.2 - 2026-11-13
 
 ### Added
