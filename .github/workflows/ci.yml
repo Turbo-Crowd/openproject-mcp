@@ -82,6 +82,11 @@ jobs:
           python3 -m json.tool server.json >/dev/null
 
       - name: Check public source sanitization
+        run: node scripts/check-public-sanitization.mjs
+
+      - name: Prove public sanitization negative control
         run: |
-          ! grep -RInE 'openproject[.]turbocrowd[.]net|turbo-crowd-opencode|/home/claudiogrimo' \
-            --exclude=ci.yml --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist .
+          if node scripts/check-public-sanitization.mjs --negative-control; then
+            echo "Negative control unexpectedly passed."
+            exit 1
+          fi
