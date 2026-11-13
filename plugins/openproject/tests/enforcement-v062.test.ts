@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -148,7 +148,7 @@ test("upload roots fail closed and enforce realpath containment without reading 
   writeFileSync(blocked, "blocked");
   symlinkSync(blocked, link);
   expect(() => assertAllowedUploadPath(allowed, undefined)).toThrow(/not configured/);
-  expect(assertAllowedUploadPath(allowed, root)).toBe(allowed);
+  expect(assertAllowedUploadPath(allowed, root)).toBe(realpathSync(allowed));
   expect(() => assertAllowedUploadPath(link, root)).toThrow(/outside/);
   expect(() => assertAllowedUploadPath(join(root, "..", "openproject-upload-outside-ignored", "blocked.txt"), root)).toThrow();
 });
