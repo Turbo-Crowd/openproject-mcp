@@ -8,13 +8,13 @@
     "source": "github",
     "subfolder": "plugins/openproject"
   },
-  "version": "0.6.1",
+  "version": "0.6.3",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@turbo-crowd/openproject-mcp",
-      "version": "0.6.1",
+      "version": "0.6.3",
       "transport": {
         "type": "stdio"
       },
