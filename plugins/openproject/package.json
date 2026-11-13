@@ -1,6 +1,6 @@
 {
   "name": "@turbo-crowd/openproject-mcp",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "General-purpose OpenProject API v3 MCP server with policy-gated writes",
   "mcpName": "io.github.Turbo-Crowd/openproject-mcp",
   "license": "MIT",
