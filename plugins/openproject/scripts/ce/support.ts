@@ -24,10 +24,11 @@ export async function safely<T>(operation: () => Promise<T>): Promise<T | Return
   }
 }
 
-export function mutationGate(policy: OpenProjectPolicy, tool: string, targetProjectId: number, destructive: boolean, confirmed?: boolean) {
+export function mutationGate(policy: OpenProjectPolicy, tool: string, targetProjectId: number, destructive: boolean, confirmed?: boolean, module?: string) {
   const operation = destructive ? "destructive" : "write";
-  const decision = evaluateMutation(policy, { tool, operation, projectId: targetProjectId, confirm: confirmed });
-  const audit = createAuditRecord({ tool, operation, projectId: targetProjectId, confirm: confirmed }, decision);
+  const intent = { tool, operation, projectId: targetProjectId, confirm: confirmed, module } as const;
+  const decision = evaluateMutation(policy, intent);
+  const audit = createAuditRecord(intent, decision);
   if (policy.auditEnabled) console.error(JSON.stringify(audit));
   if (!decision.allowed) return { status: decision.preview ? "PREVIEW" : "POLICY_DENIED", preview: decision.preview, audit, message: decision.reason };
   return null;

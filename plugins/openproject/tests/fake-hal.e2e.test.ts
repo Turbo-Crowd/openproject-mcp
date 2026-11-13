@@ -8,8 +8,10 @@ const policy: OpenProjectPolicy = {
   writeEnabled: true,
   allowedProjectIds: [7],
   allowedWorkPackageTypeIds: [],
+  allowedWriteTools: ["ce_create_news", "ce_delete_news"],
   allowDestructive: true,
   auditEnabled: false,
+  membershipWritePolicy: { allowedCreateProjectIds: [], allowedUpdateProjectIds: [], allowedDeleteProjectIds: [] },
 };
 
 function tools(server: McpServer) {
