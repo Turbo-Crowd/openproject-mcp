@@ -1,11 +1,11 @@
 {
-  "name": "openproject-codex-plugin",
+  "name": "openproject-mcp",
   "interface": {
-    "displayName": "OpenProject Codex Plugin"
+    "displayName": "OpenProject MCP"
   },
   "plugins": [
     {
-      "name": "openproject",
+      "name": "openproject-mcp",
       "source": {
         "source": "local",
         "path": "./plugins/openproject"

@@ -113,7 +113,7 @@ describe("createOpenProjectApi", () => {
     );
   });
 
-  test("reports OpenProject status and response details", async () => {
+  test("sanitizes OpenProject transport failures into stable categories", async () => {
     const api = createOpenProjectApi(
       "https://tasks.example.com",
       "test-token",
@@ -123,9 +123,11 @@ describe("createOpenProjectApi", () => {
         }),
     );
 
-    await expect(api("/api/v3/work_packages/404")).rejects.toThrow(
-      /OpenProject HTTP 404.*NotFound/,
-    );
+    await expect(api("/api/v3/work_packages/404")).rejects.toMatchObject({
+      status: 404,
+      category: "NOT_FOUND",
+      message: "OpenProject resource was not found.",
+    });
   });
 
   test("downloads authenticated attachment content with a size limit", async () => {

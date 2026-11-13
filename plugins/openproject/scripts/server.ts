@@ -19,6 +19,11 @@ import {
 } from "./openproject-api.js";
 import { resolveEnvFile } from "./config.js";
 import { registerExpandedTools } from "./expanded-tools.js";
+import { registerCeTools } from "./ce-tools.js";
+import { createAuditRecord, evaluateMutation, loadOpenProjectPolicy } from "./policy.js";
+import { resolveInheritedWriteProjectScope } from "./inherited-write-scope.js";
+import { INHERITED_DIRECT_TOOL_NAMES } from "./tool-inventory.js";
+export { EXPECTED_TOOL_COUNT, INHERITED_DIRECT_TOOL_NAMES } from "./tool-inventory.js";
 
 function loadEnvFile(path: string): void {
   const source = readFileSync(path, "utf8");
@@ -83,6 +88,7 @@ const api = createOpenProjectApi(
   timeoutMs,
   authMode,
 );
+const policy = loadOpenProjectPolicy();
 
 const filterSchema = z.array(
   z.object({
@@ -119,7 +125,59 @@ async function resolveProjectType(
   return selected.id;
 }
 
-const server = new McpServer({ name: "openproject", version: "0.5.0" });
+const server = new McpServer({ name: "io.github.Turbo-Crowd/openproject-mcp", version: "0.5.0" });
+
+// Apply preview, verified resource scope, and audit policy to inherited mutations.
+const originalRegisterTool = server.registerTool.bind(server);
+(server as unknown as {
+  registerTool: (name: string, config: Record<string, unknown>, handler: (args: Record<string, unknown>) => Promise<unknown>) => void;
+}).registerTool = (name, config, handler) => {
+  // CE registrations carry their own reference-specific gate and schema.
+  if (name.startsWith("ce_")) {
+    originalRegisterTool(name, config as never, handler as never);
+    return;
+  }
+  const annotations = config.annotations as Record<string, boolean> | undefined;
+  if (annotations?.readOnlyHint !== false) {
+    originalRegisterTool(name, config as never, handler as never);
+    return;
+  }
+  const inputSchema = (config.inputSchema ?? {}) as Record<string, unknown>;
+  (originalRegisterTool as (...parameters: unknown[]) => void)(name, {
+    ...config,
+    inputSchema: {
+      ...inputSchema,
+      projectId: z.number().int().positive().optional().describe("Optional scope cross-check; required only where the target cannot establish scope itself."),
+      confirm: z.boolean().optional().describe("Set true only after reviewing the local preview."),
+    },
+  }, async (args: Record<string, unknown>) => {
+    const operation = annotations.destructiveHint ? "destructive" : "write";
+    if (args.confirm !== true) {
+      const decision = { allowed: false, preview: true, reason: "Set confirm: true after reviewing the preview to execute this mutation." } as const;
+      const audit = createAuditRecord({ tool: name, operation, confirm: false }, decision);
+      if (policy.auditEnabled) console.error(JSON.stringify(audit));
+      return result({ status: "PREVIEW", preview: true, tool: name, audit, message: decision.reason });
+    }
+    let projectId: number;
+    try {
+      projectId = await resolveInheritedWriteProjectScope(api, name, args);
+    } catch {
+      const decision = { allowed: false, preview: false, reason: "Verified project scope could not be resolved for this mutation." } as const;
+      const audit = createAuditRecord({ tool: name, operation, confirm: true }, decision);
+      if (policy.auditEnabled) console.error(JSON.stringify(audit));
+      return result({ status: "PROJECT_SCOPE_UNRESOLVED", tool: name, audit, message: decision.reason });
+    }
+    const workPackageTypeId = name === "create_work_package"
+      ? await resolveProjectType(projectId, args.typeId as number | undefined)
+      : undefined;
+    const intent = { tool: name, operation, projectId, workPackageTypeId, confirm: true } as const;
+    const decision = evaluateMutation(policy, intent);
+    const audit = createAuditRecord(intent, decision);
+    if (policy.auditEnabled) console.error(JSON.stringify(audit));
+    if (!decision.allowed) return result({ status: "POLICY_DENIED", tool: name, audit, message: decision.reason });
+    return handler(args);
+  });
+};
 
 server.registerTool(
   "list_projects",
@@ -345,6 +403,7 @@ server.registerTool(
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       estimatedTime: z.string().regex(/^P/).optional(),
       notify: z.boolean().default(true),
+      confirm: z.boolean().optional().describe("Set true to execute after reviewing the default preview."),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
@@ -363,7 +422,17 @@ server.registerTool(
     dueDate,
     estimatedTime,
     notify,
+    confirm,
   }) => {
+    if (!confirm) {
+      return result({
+        preview: true,
+        message: "Set confirm: true after reviewing the preview to execute this mutation.",
+        tool: "create_work_package",
+        projectId,
+        requestedTypeId: typeId,
+      });
+    }
     const resolvedTypeId = await resolveProjectType(projectId, typeId);
     const links: Record<string, HalLink> = {
       type: { href: `/api/v3/types/${resolvedTypeId}` },
@@ -491,5 +560,6 @@ server.registerTool(
 );
 
 registerExpandedTools(server, api, baseUrl);
+registerCeTools(server, api, policy);
 
 await server.connect(new StdioServerTransport());

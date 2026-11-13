@@ -1,79 +1,30 @@
 # OpenProject MCP server
 
-A comprehensive, write-capable Model Context Protocol server for OpenProject
-API v3. Its 41 focused tools cover projects, work packages, attachments,
-relations, boards, users, watchers, notifications, and reference data.
+This package provides the local, general-purpose OpenProject API v3 MCP server used by the Turbo Crowd fork. It retains the inherited tool surface for projects, work packages, attachments, relations, boards, users, watchers, notifications, and reference data.
 
-Attachment tools can list files on a work package and fetch their content.
-Text-based files are returned directly; binary files are returned as embedded
-MCP resources. Uploads and downloads are size-limited per request.
-
-The package is maintained as part of
-[OpenProject for Codex](https://github.com/alex13slem/openproject-codex-plugin),
-which also includes Codex workflow guidance and portable installers.
+It is part of [OpenProject MCP](https://github.com/Turbo-Crowd/openproject-mcp), a fork of [alex13slem/openproject-codex-plugin](https://github.com/alex13slem/openproject-codex-plugin). The upstream project remains credited under the MIT license.
 
 ## Run with an MCP client
 
-Configure these environment variables:
-
-- `OPENPROJECT_URL`: the root URL of your OpenProject instance;
-- `OPENPROJECT_API_TOKEN`: an API token with only the permissions you need.
-
-`OPENPROJECT_BASE_URL` and `OPENPROJECT_API_KEY` are accepted as compatibility
-aliases for existing MCP configurations.
-
-Optional settings:
-
-- `OPENPROJECT_PAGE_SIZE`: default collection page size from 1 to 100
-  (default `25`);
-- `OPENPROJECT_TIMEOUT_MS`: request timeout from 1000 to 300000 milliseconds
-  (default `30000`);
-- `OPENPROJECT_AUTH_MODE`: `basic` for broad compatibility (default), or
-  `bearer` for OpenProject 17.2 and newer.
-- `OPENPROJECT_ALLOWED_UPLOAD_DIRS`: platform-separated directories from which
-  upload tools may read files (default: current working directory).
-
-Then launch the stdio server with:
+Configure `OPENPROJECT_URL` and `OPENPROJECT_API_TOKEN` through your client's private environment. Use an HTTPS origin such as `https://openproject.example.com`, and keep tokens out of commits and logs.
 
 ```bash
-npx -y openproject-codex-plugin
+bun scripts/server.ts
 ```
 
-Example MCP configuration:
+For development, install with `bun install --frozen-lockfile` first. The package name is `@turbo-crowd/openproject-mcp`; publication is not part of this repository state.
 
-```json
-{
-  "mcpServers": {
-    "openproject": {
-      "command": "npx",
-      "args": ["-y", "openproject-codex-plugin"],
-      "env": {
-        "OPENPROJECT_URL": "https://tasks.example.com",
-        "OPENPROJECT_API_TOKEN": "your-api-token"
-      }
-    }
-  }
-}
-```
+## Policy configuration
 
-Never commit API tokens or include them in public logs and screenshots.
+The safety layer defaults to no mutation and emits previews for policy-gated writes until `confirm: true` is supplied. Configure only the minimum scope required:
 
-## Capabilities
+- `OPENPROJECT_WRITE_ENABLED` defaults to `false`.
+- `OPENPROJECT_ALLOWED_PROJECT_IDS` defaults to an empty list.
+- `OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS` defaults to an empty list.
+- `OPENPROJECT_ALLOW_DESTRUCTIVE` defaults to `false`.
+- `OPENPROJECT_AUDIT_ENABLED` defaults to `true` and emits sanitized audit records to stderr.
 
-- Project CRUD, counts, native filters, sorting, and pagination.
-- Work-package search, CRUD, comments, activity history, scheduling, estimates,
-  progress, hierarchy, assignees, responsible users, priorities, statuses, and
-  versions.
-- Attachment listing, authenticated reads, local-file uploads, and deletion.
-- Relations and watcher management.
-- Current-user lookup, user search, and permission-aware available assignees.
-- In-app notifications and Kanban-style board inspection.
-- Status, priority, type, and version discovery.
-- Restricted GET-only passthrough for uncovered paths under `/api/v3`.
-
-Read, write, and destructive tools carry MCP annotations so compatible clients
-can apply appropriate confirmation policies. Collection responses include
-`total`, `count`, `offset`, `pageSize`, and `hasMore` metadata.
+All registered mutations use preview-first policy handling. Confirmed inherited mutations are usable when verified or explicit project scope matches configured policy, and fail closed when scope cannot be established. `create_work_package`, `mark_all_notifications_read`, and top-level `create_project` require `projectId` on confirmation; `create_project` derives scope from `parentId` when creating a subproject. CE mutations require an explicit allowed project and verify ownership for target resources. See the repository [README](../../README.md) for deterministic-validation limits and disposable-instance guidance.
 
 ## License
 

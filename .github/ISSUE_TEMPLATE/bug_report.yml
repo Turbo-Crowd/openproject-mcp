@@ -5,7 +5,7 @@ labels: [bug]
 body:
   - type: markdown
     attributes:
-      value: Do not include API tokens, private URLs, or customer data.
+      value: Do not include API tokens, private URLs, customer data, or unredacted logs. For security issues, use private vulnerability reporting.
   - type: textarea
     id: description
     attributes:
@@ -16,10 +16,10 @@ body:
   - type: textarea
     id: reproduction
     attributes:
-      label: Reproduction steps
+      label: Safe reproduction steps
       placeholder: |
-        1. Configure ...
-        2. Ask Codex to ...
+        1. Configure a disposable instance ...
+        2. Call the MCP tool ...
         3. Observe ...
     validations:
       required: true
@@ -33,4 +33,4 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Include OS, Bun version, Codex version, and OpenProject version when known.
+      description: Include MCP client, OS, Bun version, and OpenProject version when known.

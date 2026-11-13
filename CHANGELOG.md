@@ -1,82 +1,37 @@
 # Changelog
 
-All notable changes to this project are documented here. The project follows
-[Semantic Versioning](https://semver.org/).
+All notable changes to this project are documented here. The project follows [Semantic Versioning](https://semver.org/).
 
-## 0.5.0 — 2026-07-14
-
-### Added
-
-- Project create, read, update, delete, filtering, pagination, and count tools.
-- Work-package activity history, deletion, native filters, sorting, pagination,
-  scheduling, estimates, progress, hierarchy, versions, and responsibility.
-- Relation, watcher, user, available-assignee, notification, board, and
-  reference-data tools.
-- Attachment uploads and deletion with allowlisted local paths, symlink
-  resolution, and explicit size controls.
-- A restricted read-only escape hatch for relative OpenProject API v3 paths.
-- Request timeout, default page-size, and authentication-mode configuration.
+## Unreleased
 
 ### Changed
 
-- API-token authentication now defaults to broadly compatible Basic auth;
-  Bearer auth remains available with `OPENPROJECT_AUTH_MODE=bearer`.
-- Collection responses now include consistent pagination metadata and a
-  `hasMore` indicator.
-- GitHub workflows use the Node.js 24-based checkout action.
-
-## 0.4.0 — 2026-07-14
+- Fork identity is now Turbo Crowd: package `@turbo-crowd/openproject-mcp` and planned MCP Registry identity `io.github.Turbo-Crowd/openproject-mcp`.
+- Added explicit upstream attribution, an adoption-focused README, contribution and security guidance, a Code of Conduct, and upstream sync policy.
 
 ### Added
 
-- Work-package attachment listing and authenticated downloads.
-- Direct text-file responses and embedded MCP resources for binary files, with
-  configurable download size limits.
+- Fail-closed policy configuration with empty defaults, preview-first decisions, optional project/type allowlists, a separate destructive opt-in, and sanitized audit primitives.
+- Deterministic policy tests, including malformed configuration, preview behavior, scope denial, destructive denial, and sanitization checks.
+- Thirty-one CE tools for Meetings and agenda structures, News, Time Tracking, memberships, and project capability evidence, with offline fake-HAL E2E validation and exact 72-tool stdio discovery coverage.
+- A data-driven deterministic matrix for all 32 writes, proving preview behavior, runtime annotations, and fail-closed confirmed paths under synthetic policy, plus fake-HAL confirmed-success E2E coverage for inherited writes under verified scope.
 
-## 0.3.0 — 2026-07-14
+### Fixed
 
-### Added
+- Attachment metadata is encoded as a scalar multipart JSON field.
+- Relation creation resolves the source HAL action route, validates targets and lag, detects duplicates, and sends a target-only payload.
 
-- Published-package metadata and an npm executable for installation through
-  MCP registries and clients.
-- Official MCP Registry metadata and an OIDC-based publishing workflow.
-- Direct OpenProject work-package URLs in compact search results and write
-  responses.
+### Not yet included
 
-### Changed
+- Disposable-instance live E2E validation of version-specific CE contracts.
+- Disposable-instance validation of version-specific write and recovery contracts.
 
-- Clarified Community Edition compatibility and the project's write-capable
-  positioning relative to OpenProject's official MCP server.
-- Added a visual example workflow and refreshed the project banner.
-- Updated the roadmap after the v0.2.0 release.
-- The MCP server can now read credentials directly from environment variables,
-  while retaining support for the private environment file used by installers.
-
-## 0.2.0 — 2026-07-14
+## 0.5.0 - 2026-07-14
 
 ### Added
 
-- Cross-platform Bun installer with shell wrappers for macOS/Linux and
-  PowerShell wrappers for Windows.
-- CI coverage on Windows, macOS, and Linux.
-- Work-package filters for assignee, current user, exact due date, and status.
-- Compact work-package search results with scheduling and progress fields.
-- Unit tests for authentication headers, API errors, HAL resources, filters,
-  and optimistic-lock update payloads.
-- Architecture, troubleshooting, and roadmap documentation.
-- Project banner and expanded usage examples.
-
-### Changed
-
-- New installations use `~/.codex/openproject.env` on every desktop OS while
-  retaining compatibility with the previous `~/.config/codex` location.
-- Extracted OpenProject HTTP and payload logic into a testable API module.
-
-## 0.1.0 — 2026-07-13
-
-### Added
-
-- Initial Codex plugin and MCP server.
-- Project and work-package search tools.
-- Work-package creation, updates, and comments.
-- Installer, marketplace manifest, CI, and public project documentation.
+- Project CRUD, native filtering, sorting, pagination, and count tools.
+- Work-package activities, deletion, scheduling, estimates, progress, hierarchy, responsibility, and versions.
+- Attachment uploads and deletion, relations, watchers, notifications, boards, users, available assignees, and reference data.
+- Request timeout and authentication-mode controls.
+- Restricted GET-only API v3 passthrough for uncommon read workflows.

@@ -1,248 +1,110 @@
-# OpenProject for Codex
+# OpenProject MCP
 
-<p align="center">
-  <img src="assets/banner-v3.svg" alt="OpenProject for Codex" width="100%">
-</p>
+A general-purpose, local MCP server for OpenProject API v3. It gives compatible MCP clients a focused, typed surface for projects, work packages, attachments, relations, boards, users, watchers, notifications, and reference data.
 
-[![CI](https://github.com/alex13slem/openproject-codex-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/alex13slem/openproject-codex-plugin/actions/workflows/ci.yml)
-[![GitHub release](https://img.shields.io/github/v/release/alex13slem/openproject-codex-plugin)](https://github.com/alex13slem/openproject-codex-plugin/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![OpenProject API v3](https://img.shields.io/badge/OpenProject-API%20v3-1A67A3)](https://www.openproject.org/docs/api/)
-[![GitHub stars](https://img.shields.io/github/stars/alex13slem/openproject-codex-plugin?style=flat)](https://github.com/alex13slem/openproject-codex-plugin/stargazers)
+> **A friendly fork.** This project is maintained by Turbo Crowd and is forked from [alex13slem/openproject-codex-plugin](https://github.com/alex13slem/openproject-codex-plugin). We are grateful to the upstream maintainers and preserve the MIT license, attribution, and upstream history.
 
-**Manage OpenProject from Codex — projects, work packages, attachments,
-relations, boards, users, watchers, and notifications.** This free,
-open-source integration exposes 41 focused API v3 tools and is designed to
-work with OpenProject Community and Enterprise editions.
+## Why this fork
 
-<p align="center">
-  <img src="assets/demo.svg" alt="Codex finding and updating an OpenProject work package" width="900">
-</p>
+The upstream project established a useful OpenProject API v3 MCP integration. This fork keeps that foundation while making the server client-independent, documenting its safety boundary explicitly, and preparing a broader public OpenProject surface. The goal is practical adoption, not a claim that one tool fits every deployment.
 
-## Why this project
+| Area | Upstream baseline | This fork now | Being ported |
+| --- | --- | --- | --- |
+| MCP client | Codex plugin workflow | General-purpose stdio MCP server | Additional client examples |
+| Identity | Upstream package and registry identity | Turbo Crowd package and MCP identities | Published registry entries, after a separate release decision |
+| Existing tools | Project and work-package API v3 coverage | Existing tool names and annotations retained, plus 31 typed CE tools | Disposable-instance live E2E |
+| Expanded domains | Not included | Meetings and agenda, News, Time Tracking, memberships, and capability evidence | Version-specific live contract checks |
+| Safety | Client annotations and upload roots | Fail-closed policy loader, preview-first writes, scoped confirmed paths, destructive opt-in, sanitized audit records | Disposable-instance contract validation |
+| Documentation | Installation-oriented | Adoption, policy, compatibility, and contribution guidance | Disposable-instance E2E examples |
 
-- **Broad read and write coverage:** manage projects and work packages, upload
-  attachments, connect related tasks, inspect boards, and handle notifications.
-- **Community Edition friendly:** it uses the generally available OpenProject
-  API v3 rather than requiring the OpenProject MCP Enterprise add-on.
-- **Codex-native workflow:** tools and guidance are packaged together so Codex
-  can safely turn natural-language requests into explicit OpenProject actions.
-- **Runs locally:** credentials stay in a private file on your machine, and
-  OpenProject remains the source of truth for permissions.
+## Status and roadmap
 
-OpenProject also provides an official MCP server in Professional plans and
-above. As of July 2026, that server exposes read-only tools. This community
-project is a good fit when you need write operations, Codex-specific guidance,
-or support for Community Edition. See the
-[official MCP documentation](https://www.openproject.org/docs/system-admin-guide/integrations/mcp-server/)
-for the current capabilities of OpenProject's server.
+This repository exposes 72 deterministic-test-validated tools: 41 inherited API v3 tools and 31 typed CE tools. The CE surface covers Meetings and agenda items, sections and outcomes; News; Time Tracking; project-filtered memberships; and project-bound capability evidence. Every CE mutation is preview-first, requires an allowed explicit project and `confirm: true`, and applies ownership checks before a network mutation.
 
-## What it can do
-
-- Create, inspect, update, count, archive, and delete projects.
-- Search work packages with native filters, sorting, and pagination.
-- Create and update tasks, dates, estimates, progress, hierarchy, assignees,
-  accountable users, priorities, statuses, and versions.
-- Read activity history, add comments, and delete work packages.
-- List, download, upload, and delete attachments with size limits.
-- Create and inspect work-package relations and manage watchers.
-- Find users and valid assignees, including without global user-list access.
-- Read and clear notifications and inspect Kanban-style boards.
-- Discover statuses, priorities, types, and project versions.
-- Read otherwise unsupported API v3 resources through a restricted GET-only
-  escape hatch.
-- Guide Codex toward safe, explicit OpenProject write operations.
-
-## Example workflow
-
-```text
-You:   Find checkout-related tasks in the Storefront project.
-Codex: I found #142 "Handle expired checkout sessions" and
-       #157 "Add payment retry telemetry".
-
-You:   Add a comment to #142 saying the API fix is ready for review.
-Codex: Added the comment to work package #142.
-```
-
-Codex resolves the request through MCP tools, while OpenProject remains the
-source of truth for permissions and work-package state.
-
-## Requirements
-
-- [Bun](https://bun.sh/) 1.3 or newer
-- Codex CLI with MCP support
-- An OpenProject API token with access to the projects you want to manage
-
-The plugin and its local MCP server run natively on macOS, Linux, and Windows.
-It uses stable OpenProject API v3 endpoints and does not require an OpenProject
-Enterprise add-on. If you use Community Edition, make sure API tokens are
-enabled in your instance.
+This count is proven by offline stdio discovery, not live-instance compatibility evidence. The deterministic suite exercises every write's zero-I/O preview and fail-closed denials, and proves confirmed success under synthetic configured scope: each inherited write completes one intended mutation against a fake HAL API. See [ROADMAP.md](ROADMAP.md) for remaining disposable-instance validation. Please open an issue or submit a focused pull request if you can help validate an API contract or improve the safety layer.
 
 ## Quick start
 
-Clone the repository:
+Requirements:
+
+- [Bun](https://bun.sh/) 1.3 or newer
+- Any MCP client that supports a local stdio server
+- An OpenProject API token restricted to the minimum projects and permissions needed
+
+Clone and install dependencies:
 
 ```bash
-git clone https://github.com/alex13slem/openproject-codex-plugin.git
-cd openproject-codex-plugin
+git clone https://github.com/Turbo-Crowd/openproject-mcp.git
+cd openproject-mcp/plugins/openproject
+bun install --frozen-lockfile
 ```
 
-MCP clients that support npm packages can instead run the server with
-`npx -y openproject-codex-plugin` and pass `OPENPROJECT_URL` and
-`OPENPROJECT_API_TOKEN` as environment variables.
+Configure your MCP client to run `bun scripts/server.ts` in `plugins/openproject`. Supply credentials through the client environment or a private environment file; never commit either value:
 
-The standalone server is published under
-`io.github.alex13slem/openproject` in the official MCP Registry. Marketplace
-installations use the same API permissions and security boundaries as the
-local installer.
-
-### macOS and Linux
-
-Create a private environment file:
-
-```bash
-mkdir -p ~/.codex
-cp .env.example ~/.codex/openproject.env
-chmod 600 ~/.codex/openproject.env
+```text
+OPENPROJECT_URL=https://openproject.example.com
+OPENPROJECT_API_TOKEN=<set-in-your-client-environment>
 ```
 
-Set your OpenProject URL and API token in that file:
+The package identity is `@turbo-crowd/openproject-mcp`. The planned MCP Registry identity is `io.github.Turbo-Crowd/openproject-mcp`; neither is a publication promise.
 
-```dotenv
-OPENPROJECT_URL=https://tasks.example.com
-OPENPROJECT_API_TOKEN=your-api-token
+## Safety model
+
+Reads use the configured API token's OpenProject permissions. Mutations are deliberately opt-in:
+
+1. All writes default to a preview. Pass `confirm: true` only after reviewing the proposed operation.
+2. `OPENPROJECT_WRITE_ENABLED` defaults to `false`. Enable it only for a deliberately configured instance.
+3. `OPENPROJECT_ALLOWED_PROJECT_IDS` and `OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS` default to empty lists. A write targeting an ID outside its configured list is denied.
+4. `OPENPROJECT_ALLOW_DESTRUCTIVE` defaults to `false` and is required in addition to the write gate for destructive operations.
+5. Audit records omit secrets and replace private-loopback URLs. `OPENPROJECT_AUDIT_ENABLED` defaults to `true`.
+
+Example policy for a disposable test instance only:
+
+```text
+OPENPROJECT_WRITE_ENABLED=true
+OPENPROJECT_ALLOWED_PROJECT_IDS=101
+OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS=1
+OPENPROJECT_ALLOW_DESTRUCTIVE=false
 ```
 
-Install the MCP integration:
+All registered mutations pass through preview-first policy handling. Confirmed inherited mutations use verified resource ownership where available and are usable when the resolved scope is allowed by policy. `create_work_package`, `mark_all_notifications_read`, and a top-level `create_project` require `projectId` on confirmation because their target cannot establish scope itself; for top-level project creation, `projectId` is an explicit configured authorization scope, not inferred ownership. A subproject `create_project` derives scope from `parentId`. CE mutations require an explicit allowed project ID and perform endpoint-specific ownership checks where a target resource is involved. Omitting `confirm` always yields a harmless, zero-I/O preview.
 
-```bash
-./scripts/install.sh
-```
-
-### Windows
-
-From PowerShell, create the environment file:
-
-```powershell
-$envDir = Join-Path $HOME ".codex"
-New-Item -ItemType Directory -Force $envDir
-Copy-Item .env.example (Join-Path $envDir "openproject.env")
-notepad (Join-Path $envDir "openproject.env")
-```
-
-Set `OPENPROJECT_URL` and `OPENPROJECT_API_TOKEN`, save it, then install:
-
-```powershell
-.\scripts\install.ps1
-```
-
-The installer passes paths as separate arguments, so repository and profile
-paths containing spaces work on every supported desktop OS.
-
-### Optional configuration
+## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `OPENPROJECT_PAGE_SIZE` | `25` | Default collection page size, from 1 to 100 |
-| `OPENPROJECT_TIMEOUT_MS` | `30000` | Request timeout, from 1 to 300 seconds |
-| `OPENPROJECT_AUTH_MODE` | `basic` | Use `basic` for broad compatibility or `bearer` for OpenProject 17.2+ |
-| `OPENPROJECT_ALLOWED_UPLOAD_DIRS` | Current working directory | Platform-separated directories from which upload tools may read files |
+| `OPENPROJECT_URL` | none | OpenProject origin, for example `https://openproject.example.com` |
+| `OPENPROJECT_API_TOKEN` | none | API token; keep it private |
+| `OPENPROJECT_PAGE_SIZE` | `25` | Default list size, from 1 to 100 |
+| `OPENPROJECT_TIMEOUT_MS` | `30000` | Request timeout, from 1000 to 300000 ms |
+| `OPENPROJECT_AUTH_MODE` | `basic` | `basic` or `bearer` |
+| `OPENPROJECT_ALLOWED_UPLOAD_DIRS` | current directory | Platform-separated upload roots |
+| `OPENPROJECT_WRITE_ENABLED` | `false` | Enables policy-gated writes |
+| `OPENPROJECT_ALLOWED_PROJECT_IDS` | empty | Comma-separated permitted project IDs |
+| `OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS` | empty | Comma-separated permitted work-package type IDs |
+| `OPENPROJECT_ALLOW_DESTRUCTIVE` | `false` | Enables policy-gated destructive writes |
+| `OPENPROJECT_AUDIT_ENABLED` | `true` | Emits sanitized policy audit records to stderr |
 
-Existing configurations may use `OPENPROJECT_BASE_URL` and
-`OPENPROJECT_API_KEY` as compatibility aliases.
+`OPENPROJECT_BASE_URL` and `OPENPROJECT_API_KEY` remain compatibility aliases.
 
-### Start using the plugin
+## Compatibility and limitations
 
-Start a new Codex thread, then try prompts such as:
+The server uses OpenProject API v3 over HTTPS and runs as a local stdio process. It is intended for Community and Enterprise installations that expose the endpoints used by the registered tools. OpenProject remains the authorization authority.
 
-- `Show my active OpenProject tasks.`
-- `Find work packages mentioning the checkout flow.`
-- `Add a progress comment to work package 123.`
+The inherited tool set includes read and write capabilities for projects, work packages, attachments, relations, watchers, notifications, boards, users, and reference data. Tool names and MCP annotations are preserved. The restricted API escape hatch accepts relative GET paths under `/api/v3` only.
 
-The first two prompts are read-only. Write tools are used only for explicit,
-unambiguous requests and return a direct link to the affected work package.
-
-To keep the environment file elsewhere, pass its absolute path during
-installation on any desktop OS:
-
-```bash
-bun scripts/install.ts --env-file /secure/path/openproject.env
-```
-
-```powershell
-.\scripts\install.ps1 --env-file C:\secure\openproject.env
-```
-
-## Tools
-
-The 41 tools form one consistent OpenProject API surface:
-
-| Area | Read tools | Write tools |
-| --- | --- | --- |
-| Projects | `list_projects`, `get_project`, `count_projects` | `create_project`, `update_project`, `delete_project` |
-| Work packages | `search_work_packages`, `get_work_package`, `count_work_packages`, `list_work_package_activities` | `create_work_package`, `update_work_package`, `add_work_package_comment`, `delete_work_package` |
-| Attachments | `list_work_package_attachments`, `get_work_package_attachment` | `upload_work_package_attachment`, `delete_work_package_attachment` |
-| Relations | `list_work_package_relations`, `get_work_package_relation` | `create_work_package_relation`, `delete_work_package_relation` |
-| Users | `get_current_user`, `list_users`, `get_user`, `list_available_assignees` | — |
-| Watchers | `list_work_package_watchers` | `add_work_package_watcher`, `remove_work_package_watcher` |
-| Notifications | `list_notifications`, `get_notification` | `mark_notification_read`, `mark_all_notifications_read` |
-| Boards | `list_boards`, `get_board`, `list_board_lanes` | — |
-| Reference data | `list_work_package_types`, `list_work_package_statuses`, `list_work_package_priorities`, `list_project_versions` | — |
-| Advanced | `get_openproject_api` | — |
-
-List tools return pagination metadata. Native filter objects use `field`,
-`operator`, and string `values`; count tools should be preferred when only a
-total is needed. `get_openproject_api` accepts only relative GET paths under
-`/api/v3` and cannot call another host.
-
-Write operations use the permissions of the API-token owner. Prefer a token
-with only the access you need, never commit it, and keep the environment file
-readable only by your user. File uploads read only explicitly supplied paths
-under configured upload roots, resolve symlinks before enforcing that boundary,
-and reject files above the requested size limit. Delete operations are
-separately marked destructive so MCP clients can require confirmation.
-
-## Codex plugin marketplace
-
-The repository includes a plugin manifest and a marketplace definition at
-`.agents/plugins/marketplace.json`. Codex installations with plugin marketplace
-support can add the repository as a local marketplace. The Bun installer and
-its shell wrappers are the portable fallback when only MCP configuration is
-available.
-
-## OpenProject's MCP server compared
-
-| Capability | This project | OpenProject MCP server |
-| --- | --- | --- |
-| Community Edition | Yes | Enterprise add-on |
-| Search and read | Yes | Yes |
-| Create, update, comment, relate, and attach | Yes | Read-only as of July 2026 |
-| Codex workflow guidance | Included | Client-independent |
-| Deployment | Local Bun process | Built into OpenProject |
-
-The official server may be preferable for centrally administered, multi-user
-OAuth deployments. This project is aimed at individual Codex users who want a
-portable integration and write-capable workflows.
+No live OpenProject instance is contacted during the test suite. Before use, validate with a disposable instance and a least-privilege token. Do not rely on this project for an unreviewed production migration or as a substitute for OpenProject backups.
 
 ## Documentation
 
 - [Architecture and security boundaries](docs/architecture.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Roadmap](ROADMAP.md)
-- [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
-
-## Community
-
-- Ask setup questions and share workflows in
-  [GitHub Discussions](https://github.com/alex13slem/openproject-codex-plugin/discussions).
-- Report reproducible bugs with the
-  [bug template](https://github.com/alex13slem/openproject-codex-plugin/issues/new?template=bug_report.yml).
-- Propose focused improvements with the
-  [feature template](https://github.com/alex13slem/openproject-codex-plugin/issues/new?template=feature_request.yml).
-
-Please do not include API tokens, private instance URLs, or customer data in
-public posts.
+- [Security policy](SECURITY.md)
+- [Upstream attribution and sync](UPSTREAM.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Changelog](CHANGELOG.md)
 
 ## Development
 
@@ -250,58 +112,11 @@ public posts.
 cd plugins/openproject
 bun install --frozen-lockfile
 bun run check
+bun run build
 ```
 
-Generate a local coverage report with:
-
-```bash
-bun run test:coverage
-```
-
-The API module is covered by tests for request authentication, HAL collection
-handling, search filters, update payloads, and error responses. See
-[CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
-
-## Project layout
-
-```text
-plugins/openproject/
-├── .codex-plugin/plugin.json   # Plugin metadata
-├── .mcp.json                   # MCP process definition
-├── scripts/
-│   ├── server.ts               # MCP tools and orchestration
-│   └── openproject-api.ts      # Tested API client and payload helpers
-├── skills/openproject/         # Codex workflow guidance
-└── tests/                      # Bun unit tests
-```
-
-Planned work is tracked in the [project roadmap](ROADMAP.md). Contributions and
-well-scoped feature proposals are welcome.
-
-## Uninstall
-
-macOS and Linux:
-
-```bash
-./scripts/uninstall.sh
-```
-
-Windows PowerShell:
-
-```powershell
-.\scripts\uninstall.ps1
-```
-
-## Project status
-
-This project is community-maintained and is not affiliated with or endorsed by
-OpenProject GmbH or OpenAI. OpenProject is a trademark of OpenProject GmbH.
-
-If this integration saves you time, consider
-[starring the repository](https://github.com/alex13slem/openproject-codex-plugin)
-to help other OpenProject users discover it. Bug reports, tested-version
-reports, and focused contributions are equally valuable.
+Please report reproducible defects without including API tokens, private URLs, customer data, or logs that contain them. Contributions that include focused tests and documentation updates are especially welcome.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). OpenProject is a trademark of OpenProject GmbH. This project is not affiliated with or endorsed by OpenProject GmbH.
