@@ -91,3 +91,16 @@ test("update work package rejects malformed type and project evidence", async ()
     await expect(resolveInheritedWriteScope(api, "update_work_package", { id: 7 })).rejects.toThrow("project and type links");
   }
 });
+
+test("native technical preflight rejects wrong namespaces, IDs, and cross-project routes", async () => {
+  const wrongType = (async () => ({ id: 7, _type: "Project", _links: { project: { href: "/api/v3/projects/7" } } })) as unknown as OpenProjectApi;
+  await expect(resolveInheritedWriteScope(wrongType, "delete_work_package", { id: 7 })).rejects.toThrow("unexpected resource");
+  const wrongId = (async () => ({ id: 8, _type: "Attachment", _links: { container: { href: "/api/v3/work_packages/7" } } })) as unknown as OpenProjectApi;
+  await expect(resolveInheritedWriteScope(wrongId, "delete_work_package_attachment", { attachmentId: 7 })).rejects.toThrow("unexpected resource");
+  const crossProject = (async (path: string) => {
+    if (path === "/api/v3/relations/7") return { id: 7, _type: "Relation", _links: { from: { href: "/api/v3/work_packages/7" }, to: { href: "/api/v3/work_packages/8" } } };
+    const id = Number(path.split("/").pop());
+    return { id, _type: "WorkPackage", _links: { project: { href: `/api/v3/projects/${id}` } } };
+  }) as unknown as OpenProjectApi;
+  await expect(resolveInheritedWriteScope(crossProject, "delete_work_package_relation", { id: 7 })).rejects.toThrow("spans projects");
+});

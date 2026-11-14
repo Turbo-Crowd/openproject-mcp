@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The project follows [Se
 
 ## Unreleased
 
+## 0.7.0 - 2026-11-14
+
+### Changed
+
+- Default authorization is now `native`: URL and token are sufficient, and OpenProject user permissions authorize all 72 tools and 32 preview-confirmed writes.
+- Added `OPENPROJECT_AUTHORIZATION_MODE=native|restricted`. `restricted` preserves the v0.6.3 local write, project, type, tool, module, membership, destructive, and audit policy controls as an advanced opt-in.
+- Existing environments with legacy restriction variables and no explicit mode infer `restricted` with a sanitized startup warning; clean installations default to `native`.
+- Local upload roots remain independent from authorization mode and continue to protect filesystem access.
+
 ## 0.6.3 - 2026-11-13
 
 ### Fixed

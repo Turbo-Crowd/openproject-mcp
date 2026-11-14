@@ -9,9 +9,10 @@ Remove API tokens, private OpenProject URLs, customer data, and unredacted reque
 ## Security model
 
 - The server sends the API token only to the configured OpenProject origin.
-- OpenProject remains the authorization authority for the token.
-- Uploads are constrained to configured local roots and resolve symlinks before access.
-- The policy layer defaults to no writes, empty scope lists, previews before confirmed policy-gated writes, and destructive actions disabled. Confirmed inherited writes establish authorization scope from the target HAL resource or an explicitly configured project scope when no target exists; mismatches fail closed.
+- In default native mode, OpenProject remains the authorization authority for the token after technical target, namespace, ownership, route, payload, and concurrency preflight. Local ACL checks apply only in restricted mode.
+- Preview-first confirmation, destructive MCP annotations, route/payload validation, ownership assertions, lock-version handling, and sanitized audit records remain active in both authorization modes.
+- Optional `restricted` mode adds a fail-closed local policy layer for explicit project, type, tool, module, membership, and destructive controls.
+- Uploads are constrained to configured local roots and resolve symlinks before access; this local filesystem control is independent of OpenProject authorization.
 - Sanitized audit records must not include credentials or private-loopback URLs.
 
 If a token is exposed, revoke it in OpenProject immediately and replace it through your normal secret-management process.

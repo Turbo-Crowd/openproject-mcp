@@ -14,17 +14,13 @@ bun scripts/server.ts
 
 For development, install with `bun install --frozen-lockfile` first. The package name is `@turbo-crowd/openproject-mcp`; publication is not part of this repository state.
 
-## Policy configuration
+## Authorization modes
 
-The safety layer defaults to no mutation and emits previews for policy-gated writes until `confirm: true` is supplied. Configure only the minimum scope required:
+`native` is the default mode. It requires only URL and token credentials, registers all 72 tools, and lets OpenProject authorize every confirmed operation. The shared preview gate returns before invoking its handler until `confirm: true`; destructive tools retain their destructive MCP annotations. Technical preflight remains active in native mode: route validation, target namespace and ownership checks, lock versions, payload validation, sanitized errors, and upload-root controls. Only local ACL checks are skipped; OpenProject authorizes the confirmed request.
 
-- `OPENPROJECT_WRITE_ENABLED` defaults to `false`.
-- `OPENPROJECT_ALLOWED_PROJECT_IDS` defaults to an empty list.
-- `OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS` defaults to an empty list.
-- `OPENPROJECT_ALLOW_DESTRUCTIVE` defaults to `false`.
-- `OPENPROJECT_AUDIT_ENABLED` defaults to `true` and emits sanitized audit records to stderr.
+Set `OPENPROJECT_AUTHORIZATION_MODE=restricted` only when a deployment needs a local second authorization layer, such as a multi-tenant gateway or client-isolated agent. In restricted mode, the v0.6.3 write, project, type, tool, module, membership, destructive, and audit controls remain fail-closed. Existing installations that set a legacy restriction variable without selecting a mode are inferred as restricted and receive a sanitized startup warning.
 
-All registered mutations use preview-first policy handling. Confirmed inherited mutations are usable when verified or explicit project scope matches configured policy, and fail closed when scope cannot be established. `create_work_package`, `mark_all_notifications_read`, and top-level `create_project` require `projectId` on confirmation; `create_project` derives scope from `parentId` when creating a subproject. CE mutations require an explicit allowed project and verify ownership for target resources. See the repository [README](../../README.md) for deterministic-validation limits and disposable-instance guidance.
+`OPENPROJECT_ALLOWED_UPLOAD_DIRS` is independent of authorization mode. It is required only for the local upload tool because an OpenProject token cannot authorize reading local files. See the repository [README](../../README.md) for the complete configuration reference, compatibility guidance, and deterministic-validation limits.
 
 ## License
 

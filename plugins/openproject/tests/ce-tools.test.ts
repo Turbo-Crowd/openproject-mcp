@@ -153,3 +153,59 @@ describe("CE policy and fake HAL behavior", () => {
     await expect(call(instance, "ce_create_meeting", { projectId: 21, title: "Synthetic", startTime: "2026-01-02T10:00:00Z", duration: "1", confirm: false })).rejects.toThrow();
   });
 });
+
+test("all 17 CE writes use native handler preflight and issue one mutation", async () => {
+  const mutations: Array<{ path: string; method: string }> = [];
+  const native: OpenProjectPolicy = {
+    ...permissive,
+    authorizationMode: "native",
+    writeEnabled: false,
+    allowedProjectIds: [],
+    allowedWorkPackageTypeIds: [],
+    allowedWriteTools: [],
+    allowDestructive: false,
+    moduleEvidence: [],
+    membershipWritePolicy: { allowedCreateProjectIds: [], allowedUpdateProjectIds: [], allowedDeleteProjectIds: [] },
+  };
+  const api = fakeApi(async (path, init) => {
+    if (init?.method) mutations.push({ path, method: init.method });
+    const id = Number(path.match(/\/(\d+)(?:$|\?)/)?.[1] ?? 8);
+    const project = { href: "/api/v3/projects/21" };
+    if (path === "/api/v3/roles") return { _embedded: { elements: [{ id: 9, name: "Member" }, { id: 10, name: "Editor" }] } };
+    if (path.startsWith("/api/v3/memberships?") || path === "/api/v3/memberships") return init?.method ? { id: 8 } : { _embedded: { elements: [] } };
+    if (path.includes("meeting_agenda_items/")) return { id, _type: "MeetingAgendaItem", lockVersion: 1, _links: { meeting: { href: "/api/v3/meetings/8" } } };
+    if (path.includes("meeting_agenda_sections/") || path.includes("meeting_outcomes/")) return { id, _type: "MeetingAgendaItem", _links: { meeting: { href: "/api/v3/meetings/8" } } };
+    if (path.includes("meetings/")) return { id, _type: "Meeting", lockVersion: 1, _links: { project } };
+    if (path.includes("news/")) return { id, _type: "News", lockVersion: 1, _links: { project } };
+    if (path.includes("time_entries/")) return { id, _type: "TimeEntry", lockVersion: 1, _links: { project } };
+    if (path.includes("memberships/")) return { id, _type: "Membership", lockVersion: 1, _links: { project, principal: { href: "/api/v3/principals/9" }, roles: [{ href: "/api/v3/roles/10" }] } };
+    if (path.includes("work_packages/")) return { id, _type: "WorkPackage", _links: { project } };
+    return { id: 8, _type: "Meeting", lockVersion: 1, _links: { project } };
+  });
+  const instance = server(api, native);
+  const writes: Array<[string, Record<string, unknown>, string, string]> = [
+    ["ce_create_meeting", { projectId: 21, title: "Synthetic", startTime: "2026-01-02T10:00:00Z", duration: "PT1H" }, "POST", "/api/v3/meetings"],
+    ["ce_update_meeting", { projectId: 21, meetingId: 8, title: "Synthetic" }, "PATCH", "/api/v3/meetings/8"],
+    ["ce_delete_meeting", { projectId: 21, meetingId: 8 }, "DELETE", "/api/v3/meetings/8"],
+    ["ce_create_agenda_item", { projectId: 21, meetingId: 8, title: "Synthetic" }, "POST", "/api/v3/meeting_agenda_items"],
+    ["ce_update_agenda_item", { projectId: 21, agendaItemId: 8, title: "Synthetic" }, "PATCH", "/api/v3/meeting_agenda_items/8"],
+    ["ce_create_meeting_section", { projectId: 21, meetingId: 8, title: "Synthetic" }, "POST", "/api/v3/meeting_agenda_sections"],
+    ["ce_create_meeting_outcome", { projectId: 21, agendaItemId: 8 }, "POST", "/api/v3/meeting_outcomes"],
+    ["ce_delete_meeting_agenda_child", { projectId: 21, childType: "agenda_item", childId: 8 }, "DELETE", "/api/v3/meeting_agenda_items/8"],
+    ["ce_create_news", { projectId: 21, title: "Synthetic", description: { format: "markdown", raw: "Synthetic" } }, "POST", "/api/v3/news"],
+    ["ce_update_news", { projectId: 21, newsId: 8, title: "Synthetic" }, "PATCH", "/api/v3/news/8"],
+    ["ce_delete_news", { projectId: 21, newsId: 8 }, "DELETE", "/api/v3/news/8"],
+    ["ce_create_time_entry", { projectId: 21, entityType: "WorkPackage", entityId: 8, spentOn: "2026-01-02", hours: "PT1H", activityId: 9 }, "POST", "/api/v3/time_entries"],
+    ["ce_update_time_entry", { projectId: 21, timeEntryId: 8, hours: "PT1H" }, "PATCH", "/api/v3/time_entries/8"],
+    ["ce_delete_time_entry", { projectId: 21, timeEntryId: 8 }, "DELETE", "/api/v3/time_entries/8"],
+    ["ce_create_membership", { projectId: 21, principalId: 9, roles: [9] }, "POST", "/api/v3/memberships"],
+    ["ce_update_membership", { projectId: 21, membershipId: 8, principalId: 9, roles: [10] }, "PATCH", "/api/v3/memberships/8"],
+    ["ce_delete_membership", { projectId: 21, membershipId: 8, principalId: 9, roles: [10] }, "DELETE", "/api/v3/memberships/8"],
+  ];
+  expect(writes).toHaveLength(17);
+  for (const [name, args, method, path] of writes) {
+    const before = mutations.length;
+    await call(instance, name, { ...args, confirm: true });
+    expect(mutations.slice(before)).toEqual([{ method, path }]);
+  }
+});

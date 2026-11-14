@@ -20,6 +20,8 @@ export type MembershipWritePolicy = {
 };
 
 export type OpenProjectPolicy = {
+  authorizationMode?: "native" | "restricted";
+  legacyModeInferred?: boolean;
   writeEnabled: boolean;
   allowedProjectIds: number[];
   allowedWorkPackageTypeIds: number[];
@@ -46,6 +48,8 @@ export type PolicyDecision =
   | { allowed: false; preview: false; reason: string };
 
 const DEFAULT_POLICY: OpenProjectPolicy = {
+  authorizationMode: "restricted",
+  legacyModeInferred: false,
   writeEnabled: false,
   allowedProjectIds: [],
   allowedWorkPackageTypeIds: [],
@@ -151,11 +155,29 @@ export function moduleEvidenceState(policy: OpenProjectPolicy, projectId: number
 }
 
 export function loadOpenProjectPolicy(env: NodeJS.ProcessEnv = process.env, registeredWriteTools: readonly string[] = []): OpenProjectPolicy {
+  const explicitMode = env.OPENPROJECT_AUTHORIZATION_MODE;
+  if (explicitMode !== undefined && explicitMode !== "native" && explicitMode !== "restricted") {
+    throw new Error("OPENPROJECT_AUTHORIZATION_MODE must be native or restricted");
+  }
+  const legacyRestrictionVariables = [
+    "OPENPROJECT_WRITE_ENABLED",
+    "OPENPROJECT_ALLOWED_PROJECT_IDS",
+    "OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS",
+    "OPENPROJECT_ALLOWED_WRITE_TOOLS",
+    "OPENPROJECT_ALLOW_DESTRUCTIVE",
+    "OPENPROJECT_MODULE_EVIDENCE",
+    "OPENPROJECT_MEMBERSHIP_PROTECTION",
+    "OPENPROJECT_MEMBERSHIP_WRITE_POLICY",
+  ];
+  const legacyModeInferred = explicitMode === undefined && legacyRestrictionVariables.some((name) => env[name] !== undefined);
+  const authorizationMode = explicitMode ?? (legacyModeInferred ? "restricted" : "native");
   const allowedWriteTools = parseToolList(env.OPENPROJECT_ALLOWED_WRITE_TOOLS, "OPENPROJECT_ALLOWED_WRITE_TOOLS");
   if (registeredWriteTools.length && allowedWriteTools.some((tool) => !registeredWriteTools.includes(tool))) {
     throw new Error("OPENPROJECT_ALLOWED_WRITE_TOOLS contains an unknown or non-write tool");
   }
   return {
+    authorizationMode,
+    legacyModeInferred,
     writeEnabled: parseBoolean(env.OPENPROJECT_WRITE_ENABLED, "OPENPROJECT_WRITE_ENABLED", DEFAULT_POLICY.writeEnabled),
     allowedProjectIds: parsePositiveIdList(env.OPENPROJECT_ALLOWED_PROJECT_IDS, "OPENPROJECT_ALLOWED_PROJECT_IDS"),
     allowedWorkPackageTypeIds: parsePositiveIdList(env.OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS, "OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS"),
@@ -170,6 +192,7 @@ export function loadOpenProjectPolicy(env: NodeJS.ProcessEnv = process.env, regi
 
 export function evaluateMutation(policy: OpenProjectPolicy, intent: MutationIntent): PolicyDecision {
   if (!intent.confirm) return { allowed: false, preview: true, reason: "Set confirm: true after reviewing the preview to execute this mutation." };
+  if (policy.authorizationMode !== "restricted") return { allowed: true, preview: false };
   if (!policy.writeEnabled) return { allowed: false, preview: false, reason: "Writes are disabled by policy. Set OPENPROJECT_WRITE_ENABLED=true to enable configured writes." };
   if (!policy.allowedWriteTools.includes(intent.tool)) return { allowed: false, preview: false, reason: "WRITE_TOOL_NOT_ALLOWED: target tool is not in OPENPROJECT_ALLOWED_WRITE_TOOLS." };
   if (intent.operation === "destructive" && !policy.allowDestructive) return { allowed: false, preview: false, reason: "Destructive operations are disabled by policy. Set OPENPROJECT_ALLOW_DESTRUCTIVE=true only when required." };
@@ -190,7 +213,7 @@ export function sanitizeAuditValue(value: unknown, key = ""): unknown {
   return value;
 }
 
-export function createAuditRecord(intent: MutationIntent, decision: PolicyDecision): Record<string, unknown> {
+export function createAuditRecord(policy: OpenProjectPolicy, intent: MutationIntent, decision: PolicyDecision): Record<string, unknown> {
   const reason = decision.allowed ? "policy_match" : decision.reason;
-  return sanitizeAuditValue({ event: "openproject_policy", tool: intent.tool, operation: intent.operation, projectId: intent.projectId, workPackageTypeId: intent.workPackageTypeId, decision: decision.allowed ? "allow" : decision.preview ? "preview" : "deny", reason: SECRET_KEY.test(reason) ? "<redacted>" : reason }) as Record<string, unknown>;
+  return sanitizeAuditValue({ event: "openproject_policy", tool: intent.tool, operation: intent.operation, projectId: intent.projectId, workPackageTypeId: intent.workPackageTypeId, decision: decision.allowed ? "allow" : decision.preview ? "preview" : "deny", reason: SECRET_KEY.test(reason) ? "<redacted>" : reason, authMode: policy.authorizationMode ?? "restricted" }) as Record<string, unknown>;
 }
