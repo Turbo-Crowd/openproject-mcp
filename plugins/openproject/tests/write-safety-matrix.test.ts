@@ -52,12 +52,20 @@ afterEach(async () => {
 });
 
 test("all 32 writes have individual runtime preview, annotation, and fail-closed confirmed-path evidence", async () => {
+  let transportCalls = 0;
+  const api = Bun.serve({
+    port: 0,
+    fetch() {
+      transportCalls += 1;
+      return new Response("{}");
+    },
+  });
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: ["scripts/server.ts"],
     cwd: process.cwd(),
     env: {
-      OPENPROJECT_URL: "https://openproject.invalid",
+      OPENPROJECT_URL: `http://127.0.0.1:${api.port}`,
       OPENPROJECT_API_TOKEN: "synthetic-token",
       OPENPROJECT_WRITE_ENABLED: "true",
     },
@@ -77,12 +85,15 @@ test("all 32 writes have individual runtime preview, annotation, and fail-closed
     expect(tool?.annotations?.destructiveHint).toBeBoolean();
     expect(tool?.annotations?.idempotentHint).toBeBoolean();
 
+    const beforePreview = transportCalls;
     const preview = responseText(await client.callTool({ name, arguments: args }));
     expect(preview.preview).toBe(true);
+    expect(transportCalls).toBe(beforePreview);
 
     const confirmed = responseText(await client.callTool({ name, arguments: { ...args, confirm: true } }));
     expect(confirmed.status).toBe("POLICY_DENIED");
     expect(confirmed.message).toBe("WRITE_TOOL_NOT_ALLOWED: target tool is not in OPENPROJECT_ALLOWED_WRITE_TOOLS.");
     expect(confirmed.preview).not.toBe(true);
   }
+  api.stop(true);
 });

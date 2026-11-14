@@ -4,24 +4,27 @@
 
 Set `OPENPROJECT_URL` and `OPENPROJECT_API_TOKEN` in the MCP client environment or a private environment file. Use an HTTPS URL such as `https://openproject.example.com`. Do not paste the token into an issue or terminal transcript.
 
-## A policy-gated write returns a preview
+## A write returns a preview
 
-This is expected when `confirm` is omitted. Review the request, then repeat it with `confirm: true` only if the mutation is intended.
+This is expected when `confirm` is omitted. Review the request, then repeat it with `confirm: true` only if the mutation is intended. The shared preview gate returns before invoking its write handler in both authorization modes.
 
-## A confirmed write is denied
+## A confirmed native-mode write is rejected
 
-Check the policy variables without exposing their values:
+OpenProject is authoritative in native mode. The configured token may lack permission, the resource or module may be unavailable, the target may not exist, or a lock version may be stale. Inspect the sanitized 401, 403, 404, 409, or validation category, correct the request or permissions in OpenProject, and retry only when appropriate.
 
+## A confirmed restricted-mode write is denied
+
+Check the optional restricted policy without exposing values:
+
+- `OPENPROJECT_AUTHORIZATION_MODE` must be `restricted` when local policy is intended.
 - `OPENPROJECT_WRITE_ENABLED` must be `true`.
-- `OPENPROJECT_ALLOWED_PROJECT_IDS` must include the target project when the tool supplies one.
-- `OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS` must include the target type when the tool supplies one.
-- Destructive actions additionally require `OPENPROJECT_ALLOW_DESTRUCTIVE=true`.
+- Project, type, tool, destructive, module, and membership controls must permit the operation.
 
-For confirmed inherited writes, scope is verified from the target resource where possible. Supply `projectId` for `create_work_package`, `mark_all_notifications_read`, and a top-level `create_project`; a subproject `create_project` instead derives scope from `parentId`. A top-level project uses `projectId` only as an explicit configured authorization scope. Empty, missing, malformed, unresolved, or mismatched scope values fail closed. This is intentional; consult the [README](../README.md) for deterministic-validation limits and current tool coverage.
+Existing v0.6.3 variables without an explicit mode infer restricted mode and produce a startup warning. Set `OPENPROJECT_AUTHORIZATION_MODE=native` to use OpenProject permissions without the local allowlists, or set it to `restricted` to retain the policy intentionally.
 
 ## An upload path is rejected
 
-Uploads must be under `OPENPROJECT_ALLOWED_UPLOAD_DIRS`, or under the process working directory when the variable is unset. The server resolves symlinks before checking the boundary, so a link to a file outside an allowed root is denied.
+Uploads require `OPENPROJECT_ALLOWED_UPLOAD_DIRS` in both modes. The server resolves symlinks before checking the boundary, so a link to a file outside an allowed root is denied. Missing roots disable only local uploads, not other writes.
 
 ## OpenProject rejects an update
 
@@ -29,7 +32,7 @@ The token may lack permission, the target may no longer exist, or another client
 
 ## Connection or authentication failures
 
-Verify that the configured URL is the OpenProject origin, that API v3 is available, and that `OPENPROJECT_AUTH_MODE` matches the instance. The default is `basic`; `bearer` is available for compatible installations. Use a least-privilege token and a disposable instance when diagnosing.
+Verify that the configured URL is the OpenProject origin, that API v3 is available, and that `OPENPROJECT_AUTH_MODE` matches the instance. The default is `basic`; `bearer` is available for compatible installations. Use an appropriately scoped token and a disposable instance when diagnosing.
 
 ## Reporting a defect
 

@@ -34,7 +34,7 @@ afterEach(async () => {
   projectCreatePayloads = [];
 });
 
-test("all 15 inherited writes resolve fake-HAL scope and issue exactly one intended mutation", async () => {
+test("all 15 inherited writes use native fake-HAL preflight and issue exactly one intended mutation", async () => {
   mkdirSync(uploadDir, { recursive: true });
   const uploadPath = join(uploadDir, "synthetic.txt");
   writeFileSync(uploadPath, "synthetic");
@@ -79,11 +79,7 @@ test("all 15 inherited writes resolve fake-HAL scope and issue exactly one inten
       env: {
         OPENPROJECT_URL: `http://127.0.0.1:${server.port}`,
         OPENPROJECT_API_TOKEN: "synthetic-token",
-        OPENPROJECT_WRITE_ENABLED: "true",
-        OPENPROJECT_ALLOWED_PROJECT_IDS: "7",
-        OPENPROJECT_ALLOWED_WORK_PACKAGE_TYPE_IDS: "1",
-        OPENPROJECT_ALLOWED_WRITE_TOOLS: "create_work_package,update_work_package,add_work_package_comment,create_project,update_project,delete_project,delete_work_package,create_work_package_relation,delete_work_package_relation,upload_work_package_attachment,delete_work_package_attachment,add_work_package_watcher,remove_work_package_watcher,mark_notification_read,mark_all_notifications_read",
-        OPENPROJECT_ALLOW_DESTRUCTIVE: "true",
+        OPENPROJECT_AUTHORIZATION_MODE: "native",
         OPENPROJECT_ALLOWED_UPLOAD_DIRS: uploadDir,
         OPENPROJECT_AUDIT_ENABLED: "false",
       },
@@ -121,6 +117,51 @@ test("all 15 inherited writes resolve fake-HAL scope and issue exactly one inten
   }
 });
 
+test("native technical preflight rejects malformed target evidence without mutation transport", async () => {
+  const cases: Array<[string, Record<string, unknown>, (path: string) => Record<string, unknown>]> = [
+    ["delete_work_package", { id: 7 }, () => ({ id: 7, _type: "Project" })],
+    ["delete_work_package_attachment", { attachmentId: 7 }, () => ({ id: 8, _type: "Attachment", _links: { container: { href: "/api/v3/work_packages/7" } } })],
+    ["update_work_package", { id: 7, subject: "Synthetic" }, () => ({ id: 7, _type: "WorkPackage", _links: { project: { href: "/api/v3/projects/7" } } })],
+    ["delete_work_package_relation", { id: 7 }, (path) => path === "/api/v3/relations/7"
+      ? { id: 7, _type: "Relation", _links: { from: { href: "/api/v3/work_packages/7" }, to: { href: "/api/v3/work_packages/8" } } }
+      : { id: Number(path.split("/").pop()), _type: "WorkPackage", _links: { project: { href: path.endsWith("/7") ? "/api/v3/projects/7" : "/api/v3/projects/8" } } }],
+  ];
+  for (const [name, args, responseFor] of cases) {
+    const mutations: Array<{ path: string; method: string }> = [];
+    const server = Bun.serve({
+      port: 0,
+      fetch(request) {
+        const url = new URL(request.url);
+        const path = `${url.pathname}${url.search}`;
+        if (["POST", "PATCH", "DELETE"].includes(request.method)) mutations.push({ method: request.method, path });
+        return response(responseFor(path));
+      },
+    });
+    try {
+      const transport = new StdioClientTransport({
+        command: process.execPath,
+        args: ["scripts/server.ts"],
+        cwd: process.cwd(),
+        env: {
+          OPENPROJECT_URL: `http://127.0.0.1:${server.port}`,
+          OPENPROJECT_API_TOKEN: "synthetic-token",
+          OPENPROJECT_AUTHORIZATION_MODE: "native",
+          OPENPROJECT_AUDIT_ENABLED: "false",
+        },
+        stderr: "pipe",
+      });
+      transports.push(transport);
+      const client = new Client({ name: "native-technical-negative", version: "1" });
+      await client.connect(transport);
+      const output = result(await client.callTool({ name, arguments: { ...args, confirm: true } }));
+      expect(["INTERNAL_ERROR", "PROJECT_SCOPE_UNRESOLVED"]).toContain(String(output.status));
+      expect(mutations).toEqual([]);
+    } finally {
+      server.stop(true);
+    }
+  }
+});
+
 test("top-level create_project uses an explicit policy scope without a parent payload", async () => {
   const mutations: Array<{ path: string; method: string }> = [];
   const server = Bun.serve({
@@ -147,9 +188,7 @@ test("top-level create_project uses an explicit policy scope without a parent pa
       env: {
         OPENPROJECT_URL: `http://127.0.0.1:${server.port}`,
         OPENPROJECT_API_TOKEN: "synthetic-token",
-        OPENPROJECT_WRITE_ENABLED: "true",
-        OPENPROJECT_ALLOWED_PROJECT_IDS: "7",
-        OPENPROJECT_ALLOWED_WRITE_TOOLS: "create_project",
+        OPENPROJECT_AUTHORIZATION_MODE: "native",
         OPENPROJECT_AUDIT_ENABLED: "false",
       },
       stderr: "pipe",

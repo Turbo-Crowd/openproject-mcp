@@ -89,6 +89,10 @@ const api = createOpenProjectApi(
   authMode,
 );
 const policy = loadOpenProjectPolicy(process.env, WRITE_TOOL_NAMES);
+if (policy.legacyModeInferred) {
+  console.error("OpenProject MCP: legacy restriction variables detected; using restricted authorization mode. Set OPENPROJECT_AUTHORIZATION_MODE explicitly to silence this warning.");
+}
+console.error(JSON.stringify({ event: "openproject_authorization_mode", authorizationMode: policy.authorizationMode ?? "restricted" }));
 
 const filterSchema = z.array(
   z.object({
@@ -125,7 +129,7 @@ async function resolveProjectType(
   return selected.id;
 }
 
-const server = new McpServer({ name: "io.github.Turbo-Crowd/openproject-mcp", version: "0.6.3" });
+const server = new McpServer({ name: "io.github.Turbo-Crowd/openproject-mcp", version: "0.7.0" });
 
 // Apply preview, verified resource scope, and audit policy to inherited mutations.
 const originalRegisterTool = server.registerTool.bind(server);
@@ -154,23 +158,26 @@ const originalRegisterTool = server.registerTool.bind(server);
     const operation = annotations.destructiveHint ? "destructive" : "write";
     if (args.confirm !== true) {
       const decision = evaluateMutation(policy, { tool: name, operation, confirm: false });
-      const audit = createAuditRecord({ tool: name, operation, confirm: false }, decision);
+      const audit = createAuditRecord(policy, { tool: name, operation, confirm: false }, decision);
       if (policy.auditEnabled) console.error(JSON.stringify(audit));
       return result({ status: "PREVIEW", preview: true, tool: name, audit, message: "Set confirm: true after reviewing the preview to execute this mutation.", allowedWriteTool: policy.allowedWriteTools.includes(name) });
     }
-    // Reject disabled or unallowlisted mutations before any scope-preflight I/O.
-    const preliminary = evaluateMutation(policy, { tool: name, operation, confirm: true });
-    if (!preliminary.allowed) {
-      const audit = createAuditRecord({ tool: name, operation, confirm: true }, preliminary);
-      if (policy.auditEnabled) console.error(JSON.stringify(audit));
-      return result({ status: "POLICY_DENIED", tool: name, audit, message: preliminary.reason });
+    // Restricted mode can reject an incomplete local authorization intent without I/O.
+    // Confirmed native writes and permitted restricted writes establish target evidence first.
+    if (policy.authorizationMode === "restricted") {
+      const preliminary = evaluateMutation(policy, { tool: name, operation, confirm: true });
+      if (!preliminary.allowed) {
+        const audit = createAuditRecord(policy, { tool: name, operation, confirm: true }, preliminary);
+        if (policy.auditEnabled) console.error(JSON.stringify(audit));
+        return result({ status: "POLICY_DENIED", tool: name, audit, message: preliminary.reason });
+      }
     }
     let scope: { projectId: number; workPackageTypeId?: number };
     try {
       scope = await resolveInheritedWriteScope(api, name, args);
     } catch {
       const decision = { allowed: false, preview: false, reason: "Verified project scope could not be resolved for this mutation." } as const;
-      const audit = createAuditRecord({ tool: name, operation, confirm: true }, decision);
+      const audit = createAuditRecord(policy, { tool: name, operation, confirm: true }, decision);
       if (policy.auditEnabled) console.error(JSON.stringify(audit));
       return result({ status: "PROJECT_SCOPE_UNRESOLVED", tool: name, audit, message: decision.reason });
     }
@@ -180,9 +187,11 @@ const originalRegisterTool = server.registerTool.bind(server);
       : scope.workPackageTypeId;
     const intent = { tool: name, operation, projectId, workPackageTypeId, confirm: true } as const;
     const decision = evaluateMutation(policy, intent);
-    const audit = createAuditRecord(intent, decision);
+    const audit = createAuditRecord(policy, intent, decision);
     if (policy.auditEnabled) console.error(JSON.stringify(audit));
-    if (!decision.allowed) return result({ status: "POLICY_DENIED", tool: name, audit, message: decision.reason });
+    if (policy.authorizationMode === "restricted" && !decision.allowed) {
+      return result({ status: "POLICY_DENIED", tool: name, audit, message: decision.reason });
+    }
     return handler(args);
   });
 };
