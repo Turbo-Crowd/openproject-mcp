@@ -148,6 +148,15 @@ describe("CE policy and fake HAL behavior", () => {
     expect(calls).toBe(0);
   });
 
+  test("keeps membership preview zero-I/O without claiming role validation", async () => {
+    let calls = 0;
+    const instance = server(fakeApi(async () => { calls += 1; return {}; }));
+    const response = text(await call(instance, "ce_create_membership", { projectId: 21, principalId: 9, roles: [4] }));
+    expect(response).toMatchObject({ status: "PREVIEW", preview: true });
+    expect(calls).toBe(0);
+    expect(response).not.toHaveProperty("roleIds");
+  });
+
   test("resolves numeric IDs, numeric strings, and exact names for membership roles", async () => {
     for (const roles of [[4], ["4"], ["Member"]] as Array<Array<number | string>>) {
       let body = "";
