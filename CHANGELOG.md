@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The project follows [Se
 
 ## Unreleased
 
+## 0.7.2 - 2026-11-18
+
+### Fixed
+
+- Project membership create now serializes the principal HAL link as `/api/v3/users/{id}` instead of `/api/v3/principals/{id}`. OpenProject rejected the generic principals link on membership writes with `ResourceTypeMismatch`; the user-specific route is the correct principal for a user membership. The input schema stays user-only (`principalId`), groups remain unsupported and are never serialized as a user.
+- `ce_update_membership` remains roles-only and does not serialize a principal link; the numeric `PRINCIPAL_MISMATCH` guard is preserved.
+
 ## 0.7.1 - 2026-11-18
 
 ### Fixed
