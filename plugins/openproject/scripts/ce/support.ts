@@ -19,7 +19,12 @@ export async function safely<T>(operation: () => Promise<T>): Promise<T | Return
   try {
     return await operation();
   } catch (error) {
-    if (error instanceof OpenProjectTransportError) return statusResult(error.category, error.message);
+    if (error instanceof OpenProjectTransportError) {
+      return statusResult(error.category, error.message, {
+        httpStatus: error.status,
+        ...(error.errorIdentifier ? { errorIdentifier: error.errorIdentifier } : {}),
+      });
+    }
     throw error;
   }
 }

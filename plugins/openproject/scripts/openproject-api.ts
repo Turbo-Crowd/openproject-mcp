@@ -49,22 +49,40 @@ export class OpenProjectTransportError extends Error {
   constructor(
     public readonly status: number,
     public readonly category: "NOT_FOUND" | "PERMISSION_DENIED" | "STALE_LOCK_VERSION" | "TRANSPORT_ERROR",
+    public readonly errorIdentifier?: string,
+    message?: string,
   ) {
     super(
-      category === "NOT_FOUND" ? "OpenProject resource was not found."
+      message ?? (category === "NOT_FOUND" ? "OpenProject resource was not found."
         : category === "PERMISSION_DENIED" ? "OpenProject permission was denied."
         : category === "STALE_LOCK_VERSION" ? "OpenProject rejected a stale lockVersion; re-read before retrying."
-        : "OpenProject transport request failed.",
+        : "OpenProject transport request failed."),
     );
     this.name = "OpenProjectTransportError";
   }
 }
 
-function transportError(status: number): OpenProjectTransportError {
-  if (status === 404) return new OpenProjectTransportError(status, "NOT_FOUND");
-  if (status === 403) return new OpenProjectTransportError(status, "PERMISSION_DENIED");
-  if (status === 409) return new OpenProjectTransportError(status, "STALE_LOCK_VERSION");
-  return new OpenProjectTransportError(status, "TRANSPORT_ERROR");
+type OpenProjectErrorPayload = {
+  errorIdentifier?: unknown;
+  message?: unknown;
+};
+
+async function transportError(response: Response): Promise<OpenProjectTransportError> {
+  const status = response.status;
+  let payload: OpenProjectErrorPayload = {};
+  try {
+    payload = await response.json() as OpenProjectErrorPayload;
+  } catch {
+    // Error bodies are optional and may not be JSON.
+  }
+  const identifier = typeof payload.errorIdentifier === "string" ? payload.errorIdentifier : undefined;
+  const message = typeof payload.message === "string" && payload.message.length <= 500
+    ? payload.message
+    : undefined;
+  if (status === 404) return new OpenProjectTransportError(status, "NOT_FOUND", identifier, message);
+  if (status === 403) return new OpenProjectTransportError(status, "PERMISSION_DENIED", identifier, message);
+  if (status === 409) return new OpenProjectTransportError(status, "STALE_LOCK_VERSION", identifier, message);
+  return new OpenProjectTransportError(status, "TRANSPORT_ERROR", identifier, message);
 }
 
 export function createOpenProjectApi(
@@ -101,10 +119,8 @@ export function createOpenProjectApi(
       signal: init.signal ?? AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) {
-      // Transport payloads may contain server internals or user data. Surface only
-      // a stable category that callers can safely return through MCP.
-      await response.body?.cancel();
-      throw transportError(response.status);
+      // Return only OpenProject's structured identifier and bounded message.
+      throw await transportError(response);
     }
     return response;
   }

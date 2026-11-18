@@ -148,6 +148,57 @@ describe("CE policy and fake HAL behavior", () => {
     expect(calls).toBe(0);
   });
 
+  test("resolves numeric IDs, numeric strings, and exact names for membership roles", async () => {
+    for (const roles of [[4], ["4"], ["Member"]] as Array<Array<number | string>>) {
+      let body = "";
+      const instance = server(fakeApi(async (path, init) => {
+        if (path === "/api/v3/roles") return { total: 1, _embedded: { elements: [{ id: 4, name: "Member" }] } };
+        if (path.startsWith("/api/v3/memberships?")) return { _embedded: { elements: [] } };
+        if (path === "/api/v3/memberships") { body = String(init?.body); return { id: 8 }; }
+        return { id: 8, _links: {} };
+      }));
+      await call(instance, "ce_create_membership", { projectId: 21, principalId: 9, roles, confirm: true });
+      expect(JSON.parse(body)._links.roles).toEqual([{ href: "/api/v3/roles/4" }]);
+    }
+  });
+
+  test("returns structured role resolution failures without a membership write", async () => {
+    let mutations = 0;
+    const instance = server(fakeApi(async (path, init) => {
+      if (init?.method) mutations += 1;
+      if (path === "/api/v3/roles") return { total: 1, _embedded: { elements: [{ id: 4, name: "Member" }] } };
+      return { _embedded: { elements: [] } };
+    }));
+    const response = text(await call(instance, "ce_create_membership", { projectId: 21, principalId: 9, roles: ["Unknown"], confirm: true }));
+    expect(response).toMatchObject({ status: "ROLE_UNRESOLVED" });
+    expect(mutations).toBe(0);
+  });
+
+  test("fails closed for truncated role collections", async () => {
+    let mutations = 0;
+    const instance = server(fakeApi(async (path, init) => {
+      if (init?.method) mutations += 1;
+      if (path === "/api/v3/roles") return { total: 2, _embedded: { elements: [{ id: 4, name: "Member" }] } };
+      return { _embedded: { elements: [] } };
+    }));
+    const response = text(await call(instance, "ce_create_membership", { projectId: 21, principalId: 9, roles: [4], confirm: true }));
+    expect(response).toMatchObject({ status: "ROLE_UNRESOLVED" });
+    expect(mutations).toBe(0);
+  });
+
+  test("returns a structured membership write validation failure without retrying", async () => {
+    let writes = 0;
+    const instance = server(fakeApi(async (path, init) => {
+      if (path === "/api/v3/roles") return { total: 1, _embedded: { elements: [{ id: 4, name: "Member" }] } };
+      if (path.startsWith("/api/v3/memberships?")) return { _embedded: { elements: [] } };
+      if (init?.method === "POST") { writes += 1; throw new OpenProjectTransportError(422, "TRANSPORT_ERROR", "PropertyConstraintViolation", "Role cannot be assigned to this project."); }
+      return {};
+    }));
+    const response = text(await call(instance, "ce_create_membership", { projectId: 21, principalId: 9, roles: [4], confirm: true }));
+    expect(response).toEqual({ status: "TRANSPORT_ERROR", message: "Role cannot be assigned to this project.", httpStatus: 422, errorIdentifier: "PropertyConstraintViolation" });
+    expect(writes).toBe(1);
+  });
+
   test("rejects malformed ISO durations before preview", async () => {
     const instance = server(fakeApi(async () => ({})));
     await expect(call(instance, "ce_create_meeting", { projectId: 21, title: "Synthetic", startTime: "2026-01-02T10:00:00Z", duration: "1", confirm: false })).rejects.toThrow();
