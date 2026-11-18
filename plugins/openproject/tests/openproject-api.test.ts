@@ -113,12 +113,12 @@ describe("createOpenProjectApi", () => {
     );
   });
 
-  test("sanitizes OpenProject transport failures into stable categories", async () => {
+  test("preserves safe OpenProject transport identifiers and messages", async () => {
     const api = createOpenProjectApi(
       "https://tasks.example.com",
       "test-token",
       async () =>
-        new Response(JSON.stringify({ errorIdentifier: "urn:openproject-org:api:v3:errors:NotFound" }), {
+        new Response(JSON.stringify({ errorIdentifier: "urn:openproject-org:api:v3:errors:NotFound", message: "Work package does not exist." }), {
           status: 404,
         }),
     );
@@ -126,7 +126,8 @@ describe("createOpenProjectApi", () => {
     await expect(api("/api/v3/work_packages/404")).rejects.toMatchObject({
       status: 404,
       category: "NOT_FOUND",
-      message: "OpenProject resource was not found.",
+      errorIdentifier: "urn:openproject-org:api:v3:errors:NotFound",
+      message: "Work package does not exist.",
     });
   });
 
