@@ -157,18 +157,33 @@ describe("CE policy and fake HAL behavior", () => {
     expect(response).not.toHaveProperty("roleIds");
   });
 
-  test("resolves numeric IDs, numeric strings, and exact names for membership roles", async () => {
+  test("creates user memberships with a user link and resolves roles by ID or exact name", async () => {
     for (const roles of [[4], ["4"], ["Member"]] as Array<Array<number | string>>) {
       let body = "";
+      let mutations = 0;
       const instance = server(fakeApi(async (path, init) => {
         if (path === "/api/v3/roles") return { total: 1, _embedded: { elements: [{ id: 4, name: "Member" }] } };
         if (path.startsWith("/api/v3/memberships?")) return { _embedded: { elements: [] } };
-        if (path === "/api/v3/memberships") { body = String(init?.body); return { id: 8 }; }
+        if (path === "/api/v3/memberships") { mutations += 1; body = String(init?.body); return { id: 8 }; }
         return { id: 8, _links: {} };
       }));
-      await call(instance, "ce_create_membership", { projectId: 21, principalId: 9, roles, confirm: true });
-      expect(JSON.parse(body)._links.roles).toEqual([{ href: "/api/v3/roles/4" }]);
+      await call(instance, "ce_create_membership", { projectId: 21, principalId: 4, roles, confirm: true });
+      expect(JSON.parse(body)._links).toMatchObject({ principal: { href: "/api/v3/users/4" }, roles: [{ href: "/api/v3/roles/4" }] });
+      expect(body).not.toContain("/api/v3/principals/4");
+      expect(mutations).toBe(1);
     }
+  });
+
+  test("updates roles without serializing a principal link", async () => {
+    let body = "";
+    const instance = server(fakeApi(async (path, init) => {
+      if (path === "/api/v3/memberships/8" && !init?.method) return { id: 8, lockVersion: 1, _links: { project: { href: "/api/v3/projects/21" }, principal: { href: "/api/v3/users/4" }, roles: [{ href: "/api/v3/roles/4" }] } };
+      if (path === "/api/v3/roles") return { total: 1, _embedded: { elements: [{ id: 4, name: "Member" }] } };
+      if (path === "/api/v3/memberships/8" && init?.method === "PATCH") { body = String(init.body); return {}; }
+      return { id: 8, _links: {} };
+    }));
+    await call(instance, "ce_update_membership", { projectId: 21, membershipId: 8, principalId: 4, roles: [4], confirm: true });
+    expect(JSON.parse(body)).toEqual({ lockVersion: 1, _links: { roles: [{ href: "/api/v3/roles/4" }] } });
   });
 
   test("returns structured role resolution failures without a membership write", async () => {
