@@ -129,7 +129,7 @@ async function resolveProjectType(
   return selected.id;
 }
 
-const server = new McpServer({ name: "io.github.Turbo-Crowd/openproject-mcp", version: "0.7.0" });
+const server = new McpServer({ name: "io.github.Turbo-Crowd/openproject-mcp", version: "0.7.1" });
 
 // Apply preview, verified resource scope, and audit policy to inherited mutations.
 const originalRegisterTool = server.registerTool.bind(server);

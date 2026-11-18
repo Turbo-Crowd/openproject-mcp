@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The project follows [Se
 
 ## Unreleased
 
+## 0.7.1 - 2026-11-18
+
+### Fixed
+
+- Membership role resolution accepts numeric role IDs, numeric-string role IDs, and exact role names, resolving all three to the live role id before any write.
+- Unknown or truncated role collections now fail closed with a structured `ROLE_UNRESOLVED` result and no write.
+- Membership write failures surface as structured results carrying the OpenProject `errorIdentifier` and a bounded `message` plus `httpStatus`, without auto-retry. `MEMBERSHIP_WRITE_NOT_AUTHORIZED` remains a thrown default-deny.
+
 ## 0.7.0 - 2026-11-14
 
 ### Changed
